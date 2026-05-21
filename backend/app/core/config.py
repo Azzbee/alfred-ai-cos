@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     allow_live_payments: bool = False
 
+    # WhatsApp Business Cloud API (sandbox). Official API only; unofficial automation
+    # is refused (gets numbers banned). See docs/integrations/whatsapp.md.
+    whatsapp_access_token: str = ""
+    whatsapp_phone_number_id: str = ""
+
     # Gmail OAuth scopes for the first slice: read inbox, create drafts. No send scope yet.
     google_scopes: list[str] = [
         "https://www.googleapis.com/auth/gmail.readonly",

@@ -30,6 +30,12 @@ def _registry() -> dict[ActionType, CapabilityProvider]:
 
         providers.append(StripePaymentCapability())
 
+    # WhatsApp registers only when the Cloud API is configured.
+    if settings.whatsapp_access_token and settings.whatsapp_phone_number_id:
+        from app.capabilities.providers.whatsapp_message import WhatsAppMessageCapability
+
+        providers.append(WhatsAppMessageCapability())
+
     return {p.describe().action_type: p for p in providers}
 
 
