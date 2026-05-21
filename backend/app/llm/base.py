@@ -8,6 +8,7 @@ anywhere outside app/llm/providers/.
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any, Protocol
 
 from app.schemas.llm import (
@@ -33,9 +34,19 @@ class LLMClient(Protocol):
         ...
 
     def extract_commitments(
-        self, *, subject: str | None, body: str, sender: str, user_email: str
+        self,
+        *,
+        subject: str | None,
+        body: str,
+        sender: str,
+        user_email: str,
+        reference_date: date,
     ) -> list[ExtractedCommitment]:
-        """Extract open-loop commitments from a message (PRD 12.5)."""
+        """Extract open-loop commitments from a message (PRD 12.5).
+
+        reference_date anchors relative deadlines ("tomorrow", "by Friday") so the
+        model can resolve them to absolute dates. Pass the email's sent date.
+        """
         ...
 
     def draft_reply(

@@ -8,6 +8,7 @@ in a sync batch reuse the prompt prefix (Anthropic prompt caching, 5-minute TTL)
 from __future__ import annotations
 
 import json
+from datetime import date
 from typing import Any, cast
 
 from anthropic import Anthropic
@@ -38,7 +39,12 @@ _EXTRACT_SYSTEM = (
     "You are Albert's extraction agent. Find commitments (open loops) in an email: things "
     "the user owes someone, or someone owes the user. Quote verbatim evidence for each. "
     "If unsure, lower the confidence rather than inventing a commitment. Return an empty "
-    "list when there is nothing actionable."
+    "list when there is nothing actionable.\n"
+    "Always set due_date when the email implies any deadline. Resolve relative dates "
+    "('tomorrow', 'by Friday', 'end of week', 'before Thursday') against the reference "
+    "date given in the message, and return them as absolute YYYY-MM-DD. Set the priority "
+    "field: 'critical' or 'high' when a near deadline meets a waiting counterparty or a "
+    "blocked deal, 'medium' for routine asks, 'low' for soft or open-ended ones."
 )
 _DRAFT_SYSTEM = (
     "You are Albert's drafting agent. Write a reply that matches the requested tone, is "
@@ -91,7 +97,13 @@ class AnthropicLLMClient:
         return ClassificationResult.model_validate(raw)
 
     def extract_commitments(
-        self, *, subject: str | None, body: str, sender: str, user_email: str
+        self,
+        *,
+        subject: str | None,
+        body: str,
+        sender: str,
+        user_email: str,
+        reference_date: date,
     ) -> list[ExtractedCommitment]:
         # Wrap the list in an object: tool input schemas must be objects, not arrays.
         class _Wrapper(BaseModel):
@@ -101,6 +113,7 @@ class AnthropicLLMClient:
             model=settings.llm_extract_model,
             system=_EXTRACT_SYSTEM,
             user_content=(
+                f"Reference date (today): {reference_date.isoformat()}.\n"
                 f"The user's email address is {user_email}.\n"
                 f"From: {sender}\nSubject: {subject or '(none)'}\n\n{body}"
             ),

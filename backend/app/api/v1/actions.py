@@ -142,6 +142,12 @@ def _execute(db: Session, proposal: ActionProposal, user: User) -> None:
     if message is None or account is None:
         raise ValueError("Missing source message or connected account")
 
+    # Dev seed accounts have no real Gmail token; record a stub id so the approval
+    # flow can be exercised end to end without Google. Real accounts hit Gmail.
+    if account.scopes == ["seed"]:
+        draft.gmail_draft_id = f"seed-draft-{draft.id}"
+        return
+
     token = decrypt_token(account.token_ciphertext)
     gmail_draft_id = gmail.create_draft(
         token,

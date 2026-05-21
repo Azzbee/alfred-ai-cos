@@ -28,6 +28,16 @@ def _days_until(due: date | None, today: date) -> int | None:
     return (due - today).days
 
 
+# How much the model's own priority read contributes to the score.
+_llm_priority_bonus: dict[Priority, int] = {
+    Priority.critical: 25,
+    Priority.high: 15,
+    Priority.medium: 5,
+    Priority.low: 0,
+    Priority.noise: 0,
+}
+
+
 def score_commitment(commitment: Commitment, *, today: date) -> ScoredCommitment:
     """Return a 0-100 score, a derived priority label, and a reason string."""
     score = 0.0
@@ -59,6 +69,10 @@ def score_commitment(commitment: Commitment, *, today: date) -> ScoredCommitment
         score += 5
         if commitment.counterparty:
             reasons.append(f"you are waiting on {commitment.counterparty}")
+
+    # The LLM's own priority read is one signal, not the verdict. It nudges the
+    # score so a model-flagged "critical" with no deadline still surfaces.
+    score += _llm_priority_bonus.get(commitment.priority, 0)
 
     # Extraction confidence dampens the score so shaky items rank lower.
     score *= 0.5 + 0.5 * commitment.confidence

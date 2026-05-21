@@ -7,6 +7,8 @@ keeping the DB free of raw email content."""
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from sqlalchemy.orm import Session
 
 from app.db.enums import Provider, SourceType
@@ -16,35 +18,47 @@ from app.services import gmail
 from app.services.crypto import decrypt_token
 
 
-def process_message(db: Session, message: Message) -> list[Commitment]:
-    """Classify one message and extract its commitments. Persists results."""
+def process_message(db: Session, message: Message, *, body: str | None = None) -> list[Commitment]:
+    """Classify one message and extract its commitments. Persists results.
+
+    The body is fetched from Gmail in-process when not supplied, so it is never
+    stored. Callers that already hold the body (e.g. the dev seed path) pass it
+    in to avoid a Gmail round trip.
+    """
     llm = get_llm()
     user = db.get(User, message.user_id)
-    account = (
-        db.query(ConnectedAccount)
-        .filter(
-            ConnectedAccount.user_id == message.user_id,
-            ConnectedAccount.provider == Provider.google,
+    if user is None:
+        raise ValueError("Missing user for extraction")
+
+    if body is None:
+        account = (
+            db.query(ConnectedAccount)
+            .filter(
+                ConnectedAccount.user_id == message.user_id,
+                ConnectedAccount.provider == Provider.google,
+            )
+            .first()
         )
-        .first()
-    )
-    if user is None or account is None:
-        raise ValueError("Missing user or connected account for extraction")
+        if account is None:
+            raise ValueError("Missing connected account for extraction")
+        token = decrypt_token(account.token_ciphertext)
+        body = gmail.get_message(token, message.external_id)["body"]
 
-    token = decrypt_token(account.token_ciphertext)
-    body = gmail.get_message(token, message.external_id)["body"]
-
-    classification = llm.classify_message(
-        subject=message.subject, body=body, sender=message.sender
-    )
+    classification = llm.classify_message(subject=message.subject, body=body, sender=message.sender)
     message.classification = classification.classification
     message.priority = classification.priority
     message.action_required = classification.action_required
     # Persist the one-line reason as the body_summary surrogate for the slice.
     message.body_summary = classification.reason
 
+    # Anchor relative deadlines to when the email was sent, falling back to today.
+    reference_date = message.sent_at.date() if message.sent_at else datetime.now(UTC).date()
     extracted = llm.extract_commitments(
-        subject=message.subject, body=body, sender=message.sender, user_email=user.email
+        subject=message.subject,
+        body=body,
+        sender=message.sender,
+        user_email=user.email,
+        reference_date=reference_date,
     )
     commitments: list[Commitment] = []
     for item in extracted:
