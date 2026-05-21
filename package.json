@@ -1,0 +1,14 @@
+{
+  "name": "albert",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Albert: mobile-first AI chief of staff. Monorepo root.",
+  "workspaces": [
+    "mobile",
+    "packages/*"
+  ],
+  "scripts": {
+    "typecheck:shared": "bun --cwd packages/shared-types run typecheck",
+    "typecheck:mobile": "bun --cwd mobile run typecheck"
+  }
+}
