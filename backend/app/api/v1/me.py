@@ -82,9 +82,14 @@ def set_onboarding(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> MeOut:
-    # Merge into preferences so notification/approval settings added later coexist.
+    data = prefs.model_dump()
+    # Name is a first-class User field (used to sign drafts), not a preference.
+    if data.get("name"):
+        user.name = data["name"]
+    # Merge the rest into preferences so settings added later coexist.
+    calibration = {k: v for k, v in data.items() if k != "name" and v is not None}
     merged = dict(user.preferences)
-    merged.update({k: v for k, v in prefs.model_dump().items() if v is not None})
+    merged.update(calibration)
     user.preferences = merged
     db.commit()
     return _me(user)

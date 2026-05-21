@@ -47,6 +47,8 @@ def build_today(db: Session, user_id: str, *, today: date) -> TodayDashboard:
         if s.priority not in (Priority.noise,)
     ][:5]
 
+    # "Waiting" buckets are about real people; automated/marketing senders are excluded
+    # (their tasks can still appear in top_priorities).
     waiting_on_user = [
         WaitingItem(
             id=s.commitment.id,
@@ -54,7 +56,9 @@ def build_today(db: Session, user_id: str, *, today: date) -> TodayDashboard:
             person=s.commitment.counterparty,
         )
         for s in scored
-        if s.commitment.owner == CommitmentOwner.user and s.commitment.counterparty
+        if s.commitment.owner == CommitmentOwner.user
+        and s.commitment.counterparty
+        and not s.commitment.from_automated
     ]
     user_waiting_on = [
         WaitingItem(
@@ -63,7 +67,9 @@ def build_today(db: Session, user_id: str, *, today: date) -> TodayDashboard:
             person=s.commitment.counterparty,
         )
         for s in scored
-        if s.commitment.owner == CommitmentOwner.counterparty and s.commitment.counterparty
+        if s.commitment.owner == CommitmentOwner.counterparty
+        and s.commitment.counterparty
+        and not s.commitment.from_automated
     ]
 
     meetings = [

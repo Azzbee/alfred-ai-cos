@@ -25,6 +25,13 @@ class ExtractedCommitment(BaseModel):
     priority: Priority = Priority.medium
     evidence: str = Field(description="Verbatim quote from the source supporting this commitment.")
     confidence: float = Field(ge=0.0, le=1.0)
+    from_automated: bool = Field(
+        default=False,
+        description=(
+            "True if the sender is automated (no-reply, marketing, notification, "
+            "newsletter, security alert) rather than a real person expecting a reply."
+        ),
+    )
 
 
 class DraftResult(BaseModel):

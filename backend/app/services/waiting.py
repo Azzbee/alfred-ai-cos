@@ -47,6 +47,11 @@ def build_waiting(db: Session, user_id: str) -> WaitingView:
     waiting_on_you: list[WaitingEntry] = []
     you_are_waiting_on: list[WaitingEntry] = []
     for c in open_with_counterparty:
+        # Automated/marketing/notification senders are not real people expecting a
+        # reply, so they never appear in either waiting bucket (the task may still
+        # surface in Today's priorities).
+        if c.from_automated:
+            continue
         entry = WaitingEntry(commitment=c, age_days=_age_days(c, now=now))
         if c.owner == CommitmentOwner.user:
             waiting_on_you.append(entry)

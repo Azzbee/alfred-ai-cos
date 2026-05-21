@@ -7,15 +7,69 @@ keeping the DB free of raw email content."""
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.enums import Provider, SourceType
+from app.db.enums import CommitmentStatus, Provider, SourceType
 from app.db.models import Commitment, ConnectedAccount, Message, User
 from app.llm import get_llm
 from app.services import gmail
 from app.services.crypto import decrypt_token
+
+# Common filler words that carry no identity for a commitment. Two phrasings of the
+# same task ("retain Premium" vs "maintain Premium") differ only in filler/synonyms,
+# so keying on the distinctive content words collapses them.
+_STOPWORDS = frozenset(
+    {
+        "the",
+        "a",
+        "an",
+        "to",
+        "for",
+        "of",
+        "and",
+        "or",
+        "in",
+        "on",
+        "at",
+        "by",
+        "your",
+        "you",
+        "with",
+        "before",
+        "after",
+        "is",
+        "are",
+        "be",
+        "this",
+        "that",
+        "it",
+        "as",
+        "retain",
+        "maintain",
+        "keep",
+        "extend",
+        "access",
+        "please",
+        "send",
+        "make",
+        "sure",
+    }
+)
+
+
+def _dedup_key(owner: str, counterparty: str | None, description: str) -> str:
+    """A normalized key for collapsing near-duplicate commitments. Keys on owner +
+    counterparty + the sorted set of distinctive content words (4+ chars, not filler),
+    so reworded variants of the same task ('Upload notes to Studocu to retain Premium'
+    vs '...to maintain Premium') produce the same key regardless of order/synonyms."""
+    words = re.findall(r"[a-z0-9]+", description.lower())
+    content = sorted({w for w in words if len(w) >= 4 and w not in _STOPWORDS})
+    cp = (counterparty or "").lower().strip()
+    return f"{owner}|{cp}|{' '.join(content)}"
 
 
 def process_message(db: Session, message: Message, *, body: str | None = None) -> list[Commitment]:
@@ -60,8 +114,22 @@ def process_message(db: Session, message: Message, *, body: str | None = None) -
         user_email=user.email,
         reference_date=reference_date,
     )
+    # Dedup against existing open commitments (and within this batch) so separate
+    # emails about the same thing do not pile up multiple near-identical entries.
+    existing_open = db.scalars(
+        select(Commitment).where(
+            Commitment.user_id == message.user_id,
+            Commitment.status == CommitmentStatus.open,
+        )
+    )
+    seen = {_dedup_key(c.owner, c.counterparty, c.description) for c in existing_open}
+
     commitments: list[Commitment] = []
     for item in extracted:
+        key = _dedup_key(item.owner, item.counterparty, item.description)
+        if key in seen:
+            continue
+        seen.add(key)
         commitment = Commitment(
             user_id=message.user_id,
             description=item.description,
@@ -73,6 +141,7 @@ def process_message(db: Session, message: Message, *, body: str | None = None) -
             source_id=message.id,
             evidence=item.evidence,
             confidence=item.confidence,
+            from_automated=item.from_automated,
         )
         db.add(commitment)
         commitments.append(commitment)

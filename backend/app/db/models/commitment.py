@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import Date, Float, ForeignKey, String, Text
+from sqlalchemy import Boolean, Date, Float, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -32,6 +32,10 @@ class Commitment(Base):
     source_id: Mapped[str | None] = mapped_column(String(64), index=True)
     evidence: Mapped[str | None] = mapped_column(Text)
     confidence: Mapped[float] = mapped_column(Float, default=0.0)
+
+    # True when the counterparty is an automated/marketing/notification sender, not a
+    # real person. Such items are not surfaced as "people waiting on you".
+    from_automated: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Human-readable priority explanation (PRD principle 3). Set by the priority engine.
     reason: Mapped[str | None] = mapped_column(Text)

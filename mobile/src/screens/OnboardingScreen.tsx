@@ -1,7 +1,14 @@
 // Onboarding calibration (PRD 9.1). Three questions, then writes to preferences.
 
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import type { OnboardingPrefs } from "@albert/shared-types";
 
 import { api } from "@/api/client";
@@ -51,7 +58,8 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
   const [prefs, setPrefs] = useState<OnboardingPrefs>({});
   const [saving, setSaving] = useState(false);
 
-  const allAnswered = QUESTIONS.every((q) => prefs[q.key]);
+  const allAnswered =
+    Boolean(prefs.name?.trim()) && QUESTIONS.every((q) => prefs[q.key]);
 
   const submit = async () => {
     setSaving(true);
@@ -67,8 +75,20 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Set up Albert</Text>
       <Text style={styles.sub}>
-        Three quick questions so Albert knows what matters to you.
+        A few quick questions so Albert knows what matters to you.
       </Text>
+
+      <View style={styles.block}>
+        <Text style={styles.prompt}>What should Albert call you?</Text>
+        <TextInput
+          style={styles.nameInput}
+          placeholder="Your name (used to sign drafts)"
+          placeholderTextColor={colors.textMuted}
+          value={prefs.name ?? ""}
+          onChangeText={(t) => setPrefs((p) => ({ ...p, name: t }))}
+          autoCapitalize="words"
+        />
+      </View>
 
       {QUESTIONS.map((q) => (
         <View key={q.key} style={styles.block}>
@@ -117,6 +137,15 @@ const styles = StyleSheet.create({
   sub: { color: colors.textMuted, fontSize: 14 },
   block: { gap: spacing.sm },
   prompt: { color: colors.text, fontSize: 16, fontWeight: "600" },
+  nameInput: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    color: colors.text,
+  },
   options: { gap: spacing.sm },
   option: {
     backgroundColor: colors.surface,

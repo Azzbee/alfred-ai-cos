@@ -178,6 +178,7 @@ class NotificationPrefs(BaseModel):
 class OnboardingPrefs(BaseModel):
     # PRD 9.1 calibration questions. Free-form strings so the option set can evolve
     # without a migration; the mobile app supplies the choices.
+    name: str | None = None  # the user's name, used to sign drafts
     focus: str | None = None  # work | school | personal | founder | all
     optimize_for: str | None = None  # deadlines | priorities | follow_ups | meetings | inbox
     proactiveness: str | None = None  # quiet | balanced | very_proactive

@@ -60,8 +60,12 @@ def score_commitment(commitment: Commitment, *, today: date) -> ScoredCommitment
         else:
             score += 5
 
-    # The user owing someone is more actionable than someone owing the user.
-    if commitment.owner == CommitmentOwner.user:
+    # The user owing a real person is more actionable than someone owing the user, and
+    # both outrank an automated/marketing nudge (which gets a small boost and neutral
+    # phrasing, since no person is actually waiting).
+    if commitment.from_automated:
+        score += 8
+    elif commitment.owner == CommitmentOwner.user:
         score += 20
         if commitment.counterparty:
             reasons.append(f"{commitment.counterparty} is waiting on you")

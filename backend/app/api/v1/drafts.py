@@ -32,7 +32,10 @@ def create_draft(
     # retrieval is a follow-up (see docs/TODO.md).
     context = f"Subject: {message.subject or '(none)'}\nFrom: {message.sender}\n\n{message.snippet}"
     result = get_llm().draft_reply(
-        thread_context=context, instruction=payload.instruction, tone=payload.tone
+        thread_context=context,
+        instruction=payload.instruction,
+        tone=payload.tone,
+        user_name=user.name,
     )
 
     draft = DraftReply(

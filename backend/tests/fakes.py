@@ -53,9 +53,10 @@ class FakeLLM:
         return self._commitments
 
     def draft_reply(
-        self, *, thread_context: str, instruction: str | None, tone: str
+        self, *, thread_context: str, instruction: str | None, tone: str, user_name: str | None
     ) -> DraftResult:
-        return DraftResult(subject="Re: test", body=f"[{tone}] drafted reply")
+        sig = f"\n{user_name}" if user_name else ""
+        return DraftResult(subject="Re: test", body=f"[{tone}] drafted reply{sig}")
 
     def generate_daily_briefing(self, *, today_payload: dict) -> str:
         self.briefing_calls.append(today_payload)

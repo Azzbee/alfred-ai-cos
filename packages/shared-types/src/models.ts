@@ -103,6 +103,7 @@ export interface WaitingView {
 }
 
 export interface OnboardingPrefs {
+  name?: string | null;
   focus?: string | null;
   optimize_for?: string | null;
   proactiveness?: string | null;
