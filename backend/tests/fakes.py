@@ -71,9 +71,17 @@ class FakeLLM:
         )
 
     def parse_capture(self, *, text: str, reference_date: date) -> CaptureResult:
-        return CaptureResult(
-            tasks=self._capture_tasks, detected_project=self._detected_project
-        )
+        return CaptureResult(tasks=self._capture_tasks, detected_project=self._detected_project)
+
+
+class FakeNotifier:
+    """Implements app.services.notifications.NotificationProvider; records sends."""
+
+    def __init__(self) -> None:
+        self.sent: list[dict[str, object]] = []
+
+    def send(self, *, push_token: str, title: str, body: str, data: dict) -> None:
+        self.sent.append({"push_token": push_token, "title": title, "body": body, "data": data})
 
 
 def fake_commitment(**kwargs: object) -> ExtractedCommitment:

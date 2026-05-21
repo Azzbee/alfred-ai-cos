@@ -30,5 +30,11 @@ celery_app.conf.update(
             "task": "albert.generate_all_briefings",
             "schedule": crontab(hour=6, minute=0),
         },
+        # Scan for at-risk loops and dispatch notifications every 30 minutes. The
+        # per-user quiet-hours + threshold logic decides what actually sends.
+        "notification-scan": {
+            "task": "albert.scan_notifications",
+            "schedule": crontab(minute="*/30"),
+        },
     },
 )

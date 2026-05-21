@@ -83,3 +83,27 @@ class ActionStatus(enum.StrEnum):
     rejected = "rejected"
     executed = "executed"
     failed = "failed"
+
+
+class NotificationType(enum.StrEnum):
+    deadline_risk = "deadline_risk"
+    meeting_prep = "meeting_prep"
+    unanswered_email = "unanswered_email"
+    follow_up_due = "follow_up_due"
+    daily_briefing = "daily_briefing"
+    approval_needed = "approval_needed"
+    schedule_conflict = "schedule_conflict"
+    reminder = "reminder"
+
+
+class NotificationStatus(enum.StrEnum):
+    pending = "pending"  # queued, not yet sent (e.g. held by quiet hours)
+    sent = "sent"
+    suppressed = "suppressed"  # batched away or below threshold
+
+
+# Priority floor a notification type must clear to send immediately vs. batch.
+class NotificationImportance(enum.IntEnum):
+    low = 1
+    normal = 2
+    high = 3

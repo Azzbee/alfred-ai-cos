@@ -4,6 +4,7 @@
 import Constants from "expo-constants";
 import type {
   ActionProposal,
+  AppNotification,
   AuthStartResponse,
   Briefing,
   CaptureResponse,
@@ -107,4 +108,20 @@ export const api = {
   getMe: () => request<Me>("/me"),
   submitOnboarding: (prefs: OnboardingPrefs) =>
     request<Me>("/onboarding", { method: "POST", body: JSON.stringify(prefs) }),
+  registerDevice: (push_token: string, platform?: string) =>
+    request<void>("/devices", {
+      method: "POST",
+      body: JSON.stringify({ push_token, platform }),
+    }),
+  listNotifications: () => request<AppNotification[]>("/notifications"),
+  notificationFeedback: (id: string, useful: boolean) =>
+    request<AppNotification>(`/notifications/${id}/feedback`, {
+      method: "POST",
+      body: JSON.stringify({ useful }),
+    }),
+  setQuietHours: (quiet_hours: string) =>
+    request<void>("/notifications/prefs", {
+      method: "POST",
+      body: JSON.stringify({ quiet_hours }),
+    }),
 };

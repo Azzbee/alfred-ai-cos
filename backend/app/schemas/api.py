@@ -133,6 +133,32 @@ class TaskOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# --- Notifications ---
+class DeviceRegisterRequest(BaseModel):
+    push_token: str
+    platform: str | None = None
+
+
+class NotificationOut(BaseModel):
+    id: str
+    type: str
+    title: str
+    body: str
+    status: str
+    useful: bool | None
+
+    model_config = {"from_attributes": True}
+
+
+class NotificationFeedbackRequest(BaseModel):
+    useful: bool
+
+
+class NotificationPrefs(BaseModel):
+    # Stored in User.preferences. quiet_hours is "HH-HH" or "HH:MM-HH:MM".
+    quiet_hours: str | None = None
+
+
 # --- Onboarding / account ---
 class OnboardingPrefs(BaseModel):
     # PRD 9.1 calibration questions. Free-form strings so the option set can evolve

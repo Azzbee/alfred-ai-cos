@@ -10,7 +10,8 @@ from sqlalchemy import select
 
 from app.db.base import SessionLocal
 from app.db.models import User
-from app.services import briefing, extraction, ingestion
+from app.notifications import get_notifier
+from app.services import briefing, extraction, ingestion, notifications
 from app.workers.celery_app import celery_app
 
 
@@ -53,3 +54,24 @@ def generate_all_briefings() -> int:
     for uid in user_ids:
         generate_briefing.delay(uid)
     return len(user_ids)
+
+
+@celery_app.task(name="albert.scan_notifications")  # type: ignore[untyped-decorator]
+def scan_notifications() -> dict[str, int]:
+    """Beat entry point: scan every user for at-risk loops, enqueue notifications,
+    and dispatch the ones that clear the threshold and quiet hours."""
+    db = SessionLocal()
+    notifier = get_notifier()
+    enqueued = sent = held = 0
+    try:
+        users = list(db.scalars(select(User)))
+        now_t = datetime.now(UTC).time()
+        today = datetime.now(UTC).date()
+        for user in users:
+            enqueued += notifications.scan_for_risks(db, user.id, today=today)
+            result = notifications.dispatch_pending(db, user, now=now_t, provider=notifier)
+            sent += result["sent"]
+            held += result["held"]
+    finally:
+        db.close()
+    return {"enqueued": enqueued, "sent": sent, "held": held}

@@ -117,6 +117,15 @@ export interface Me {
   onboarded: boolean;
 }
 
+export interface AppNotification {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  status: string;
+  useful: boolean | null;
+}
+
 export interface Commitment {
   id: string;
   description: string;
