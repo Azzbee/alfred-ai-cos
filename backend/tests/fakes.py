@@ -7,18 +7,28 @@ from datetime import date
 
 from app.db.enums import CommitmentOwner, MessageClassification, Priority
 from app.schemas.llm import (
+    CaptureResult,
     ClassificationResult,
     DraftResult,
     ExtractedCommitment,
     MeetingContextSummary,
+    ParsedTask,
 )
 
 
 class FakeLLM:
     """Implements app.llm.base.LLMClient with canned responses."""
 
-    def __init__(self, *, commitments: list[ExtractedCommitment] | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        commitments: list[ExtractedCommitment] | None = None,
+        capture_tasks: list[ParsedTask] | None = None,
+        detected_project: str | None = None,
+    ) -> None:
         self._commitments = commitments or []
+        self._capture_tasks = capture_tasks or []
+        self._detected_project = detected_project
         self.briefing_calls: list[dict] = []
 
     def classify_message(
@@ -58,6 +68,11 @@ class FakeLLM:
             summary=f"Context for {event_title}",
             open_commitments=["confirm timing"],
             suggested_questions=["what is the location?"],
+        )
+
+    def parse_capture(self, *, text: str, reference_date: date) -> CaptureResult:
+        return CaptureResult(
+            tasks=self._capture_tasks, detected_project=self._detected_project
         )
 
 

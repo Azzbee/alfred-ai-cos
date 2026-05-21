@@ -6,6 +6,7 @@ import type {
   ActionProposal,
   AuthStartResponse,
   Briefing,
+  CaptureResponse,
   Commitment,
   CommitmentStatus,
   Draft,
@@ -77,4 +78,9 @@ export const api = {
   listTasks: () => request<Task[]>("/tasks"),
   updateTaskStatus: (id: string, status: TaskStatus) =>
     request<Task>(`/tasks/${id}/status?status=${status}`, { method: "POST" }),
+  captureText: (text: string) =>
+    request<CaptureResponse>("/capture", {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    }),
 };

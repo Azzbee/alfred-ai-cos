@@ -36,3 +36,16 @@ class MeetingContextSummary(BaseModel):
     summary: str
     open_commitments: list[str] = Field(default_factory=list)
     suggested_questions: list[str] = Field(default_factory=list)
+
+
+class ParsedTask(BaseModel):
+    title: str = Field(description="A concise, actionable task title.")
+    due_date: date | None = None
+    priority: Priority = Priority.medium
+
+
+class CaptureResult(BaseModel):
+    tasks: list[ParsedTask] = Field(default_factory=list)
+    detected_project: str | None = Field(
+        default=None, description="A project name if the note clearly belongs to one."
+    )

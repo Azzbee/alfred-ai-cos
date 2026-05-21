@@ -12,6 +12,7 @@ from datetime import date
 from typing import Any, Protocol
 
 from app.schemas.llm import (
+    CaptureResult,
     ClassificationResult,
     DraftResult,
     ExtractedCommitment,
@@ -63,4 +64,11 @@ class LLMClient(Protocol):
         self, *, event_title: str, related_messages: list[str]
     ) -> MeetingContextSummary:
         """Summarize context for an upcoming meeting (PRD 12.3 / 10.5)."""
+        ...
+
+    def parse_capture(self, *, text: str, reference_date: date) -> CaptureResult:
+        """Turn a messy voice/text note into structured tasks (PRD 10.3, journey 6).
+
+        reference_date anchors relative dates ("tomorrow", "Friday") to absolute dates.
+        """
         ...

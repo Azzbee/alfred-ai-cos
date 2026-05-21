@@ -131,3 +131,13 @@ class TaskOut(BaseModel):
     source_id: str | None
 
     model_config = {"from_attributes": True}
+
+
+# --- Capture ---
+class CaptureRequest(BaseModel):
+    text: str
+
+
+class CaptureResponse(BaseModel):
+    tasks: list[TaskOut]
+    detected_project: str | None

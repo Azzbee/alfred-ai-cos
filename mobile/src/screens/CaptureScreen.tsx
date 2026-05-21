@@ -17,6 +17,9 @@ import { colors, priorityColor, spacing } from "@/theme/theme";
 
 export function CaptureScreen() {
   const [title, setTitle] = useState("");
+  const [dump, setDump] = useState("");
+  const [parsing, setParsing] = useState(false);
+  const [lastProject, setLastProject] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,6 +47,23 @@ export function CaptureScreen() {
     }
   }, [title, load]);
 
+  const parse = useCallback(async () => {
+    const trimmed = dump.trim();
+    if (!trimmed) return;
+    setParsing(true);
+    setError(null);
+    try {
+      const result = await api.captureText(trimmed);
+      setDump("");
+      setLastProject(result.detected_project);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to parse note");
+    } finally {
+      setParsing(false);
+    }
+  }, [dump, load]);
+
   const toggle = useCallback(
     async (task: Task) => {
       const next =
@@ -57,6 +77,30 @@ export function CaptureScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.heading}>Capture</Text>
+
+      <Text style={styles.hint}>
+        Dump a messy note. Albert splits it into tasks.
+      </Text>
+      <TextInput
+        style={styles.dump}
+        placeholder="Tomorrow remind me to call the broker, review the CBRE valuation, and send the pellet line offer in French…"
+        placeholderTextColor={colors.textMuted}
+        value={dump}
+        onChangeText={setDump}
+        multiline
+      />
+      <Pressable
+        style={styles.parseButton}
+        onPress={() => void parse()}
+        disabled={parsing}
+      >
+        <Text style={styles.parseText}>
+          {parsing ? "Parsing…" : "Parse into tasks"}
+        </Text>
+      </Pressable>
+      {lastProject ? (
+        <Text style={styles.project}>Project detected: {lastProject}</Text>
+      ) : null}
 
       <View style={styles.inputRow}>
         <TextInput
@@ -111,7 +155,26 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg, gap: spacing.md },
   heading: { color: colors.text, fontSize: 28, fontWeight: "700" },
-  inputRow: { flexDirection: "row", gap: spacing.sm },
+  hint: { color: colors.textMuted, fontSize: 13 },
+  dump: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    padding: spacing.md,
+    color: colors.text,
+    minHeight: 88,
+    textAlignVertical: "top",
+  },
+  parseButton: {
+    backgroundColor: colors.accent,
+    borderRadius: 10,
+    paddingVertical: spacing.sm,
+    alignItems: "center",
+  },
+  parseText: { color: "#0E0F12", fontWeight: "700" },
+  project: { color: colors.accent, fontSize: 12 },
+  inputRow: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm },
   input: {
     flex: 1,
     backgroundColor: colors.surface,

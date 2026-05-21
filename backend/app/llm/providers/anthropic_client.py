@@ -22,6 +22,7 @@ from pydantic import BaseModel
 
 from app.core.config import get_settings
 from app.schemas.llm import (
+    CaptureResult,
     ClassificationResult,
     DraftResult,
     ExtractedCommitment,
@@ -50,6 +51,13 @@ _DRAFT_SYSTEM = (
     "You are Albert's drafting agent. Write a reply that matches the requested tone, is "
     "concise by default, and never invents facts not present in the thread. Do not send; "
     "you only draft."
+)
+_CAPTURE_SYSTEM = (
+    "You are Albert's capture agent. The user dumped a messy note (typed or transcribed "
+    "speech). Split it into distinct, actionable tasks with concise titles. Resolve "
+    "relative dates ('tomorrow', 'Friday', 'next week') against the reference date as "
+    "absolute YYYY-MM-DD. Infer priority from urgency words. If the note clearly belongs "
+    "to one project, set detected_project. Do not invent tasks the user did not imply."
 )
 
 
@@ -164,3 +172,12 @@ class AnthropicLLMClient:
             tool=_tool_for(MeetingContextSummary, "record_summary", "Record the meeting summary."),
         )
         return MeetingContextSummary.model_validate(raw)
+
+    def parse_capture(self, *, text: str, reference_date: date) -> CaptureResult:
+        raw = self._structured(
+            model=settings.llm_extract_model,
+            system=_CAPTURE_SYSTEM,
+            user_content=f"Reference date (today): {reference_date.isoformat()}.\n\nNote:\n{text}",
+            tool=_tool_for(CaptureResult, "record_tasks", "Record the parsed tasks."),
+        )
+        return CaptureResult.model_validate(raw)

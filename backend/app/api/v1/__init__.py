@@ -6,6 +6,7 @@ from app.api.v1 import (
     actions,
     auth,
     briefings,
+    capture,
     commitments,
     dev,
     drafts,
@@ -25,4 +26,5 @@ api_router.include_router(actions.router)
 api_router.include_router(meetings.router)
 api_router.include_router(briefings.router)
 api_router.include_router(tasks.router)
+api_router.include_router(capture.router)
 api_router.include_router(dev.router)

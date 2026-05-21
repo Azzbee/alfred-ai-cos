@@ -82,6 +82,11 @@ export interface TaskCreateRequest {
   priority?: Priority;
 }
 
+export interface CaptureResponse {
+  tasks: Task[];
+  detected_project: string | null;
+}
+
 export interface Commitment {
   id: string;
   description: string;
