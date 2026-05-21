@@ -13,7 +13,7 @@ from app.core.security import get_current_user
 from app.db.base import get_db
 from app.db.models import User
 from app.schemas.api import SyncResponse
-from app.services import extraction, ingestion
+from app.services import calendar, extraction, ingestion
 
 router = APIRouter(prefix="/sync", tags=["sync"])
 
@@ -27,4 +27,9 @@ def sync_now(
     commitments_found = 0
     for message in messages:
         commitments_found += len(extraction.process_message(db, message))
-    return SyncResponse(ingested=len(messages), commitments_found=commitments_found)
+    events = calendar.sync_calendar(db, user.id)
+    return SyncResponse(
+        ingested=len(messages),
+        commitments_found=commitments_found,
+        events_synced=len(events),
+    )

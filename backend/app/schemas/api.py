@@ -67,3 +67,4 @@ class ActionProposalOut(BaseModel):
 class SyncResponse(BaseModel):
     ingested: int
     commitments_found: int
+    events_synced: int = 0

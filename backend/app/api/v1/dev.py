@@ -6,7 +6,8 @@ the production path is /sync against a connected Gmail account."""
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -18,7 +19,7 @@ from app.db.base import get_db
 from app.db.enums import Provider, SyncStatus
 from app.db.models import ConnectedAccount, Message, User
 from app.schemas.api import SyncResponse
-from app.services import extraction
+from app.services import calendar, extraction
 from app.services.crypto import encrypt_token
 
 router = APIRouter(prefix="/dev", tags=["dev"])
@@ -162,4 +163,36 @@ def seed_emails(
         ingested += 1
         commitments_found += len(extraction.process_message(db, message, body=seed["body"]))
 
-    return SyncResponse(ingested=ingested, commitments_found=commitments_found)
+    events_synced = _seed_calendar(db, user)
+    return SyncResponse(
+        ingested=ingested, commitments_found=commitments_found, events_synced=events_synced
+    )
+
+
+def _seed_calendar(db: Session, user: User) -> int:
+    """Seed two upcoming events. The Celine meeting shares an attendee with the
+    seeded meeting-prep email so A3 meeting prep can find related context."""
+    tomorrow = datetime.now(UTC) + timedelta(days=1)
+    events: list[dict[str, Any]] = [
+        {
+            "external_id": "seed-event-celine",
+            "title": "Call with Celine",
+            "start_time": tomorrow.replace(hour=14, minute=0, second=0, microsecond=0),
+            "end_time": tomorrow.replace(hour=14, minute=30, second=0, microsecond=0),
+            "location": "Google Meet",
+            "description": "Discuss lunch timing and the scheduling conflict.",
+            "attendees": ["celine@example.com", user.email],
+        },
+        {
+            "external_id": "seed-event-internal",
+            "title": "Focus block",
+            "start_time": tomorrow.replace(hour=9, minute=0, second=0, microsecond=0),
+            "end_time": tomorrow.replace(hour=10, minute=0, second=0, microsecond=0),
+            "location": None,
+            "description": None,
+            "attendees": [],
+        },
+    ]
+    for raw in events:
+        calendar.upsert_seed_event(db, user.id, raw, user.email)
+    return len(events)
