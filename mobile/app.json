@@ -19,7 +19,8 @@
       "expo-secure-store",
       "expo-notifications",
       "expo-audio",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-font"
     ],
     "extra": {
       "apiBaseUrl": "http://192.168.0.31:8000"
