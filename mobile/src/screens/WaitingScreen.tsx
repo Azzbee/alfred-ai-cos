@@ -1,5 +1,7 @@
 // Waiting-for tracker (PRD 10.1, journey 5). Two sections: people waiting on you,
-// and who you are waiting on, oldest first so stale items surface.
+// and who you are waiting on, oldest first so stale items surface. Pushed route, so
+// it carries its own back button. "Draft a follow-up" opens the Approval sheet so the
+// draft is visible and editable (not a silent API call).
 
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -10,6 +12,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useRouter } from "expo-router";
 import {
   SourceType,
   type WaitingEntry,
@@ -17,7 +20,19 @@ import {
 } from "@albert/shared-types";
 
 import { api } from "@/api/client";
-import { colors, spacing } from "@/theme/theme";
+import { Ic } from "@/components/icons";
+import { useShell } from "@/components/Shell";
+import { ApprovalSheet } from "@/screens/sheets/ApprovalSheet";
+import {
+  Avatar,
+  Card,
+  Eyebrow,
+  IconBtn,
+  Meta,
+  SectionTitle,
+  Serif,
+} from "@/components/ui";
+import { colors, layout, spacing } from "@/theme/theme";
 
 function Entry({
   entry,
@@ -26,26 +41,34 @@ function Entry({
   entry: WaitingEntry;
   onFollowUp: () => void;
 }) {
+  const canFollowUp =
+    entry.source_type === SourceType.Gmail && Boolean(entry.source_id);
   return (
-    <View style={styles.entry}>
-      <Text style={styles.desc}>{entry.description}</Text>
-      <Text style={styles.meta}>
-        {entry.counterparty ?? "Someone"} · {entry.age_days}d old
-        {entry.due_date ? ` · due ${entry.due_date}` : ""}
-      </Text>
-      {entry.source_type === SourceType.Gmail && entry.source_id ? (
-        <Pressable onPress={onFollowUp}>
-          <Text style={styles.action}>Draft a follow-up</Text>
+    <Card flat style={styles.entry}>
+      <View style={styles.entryHead}>
+        <Avatar name={entry.counterparty ?? "Someone"} size={28} />
+        <View style={styles.entryBody}>
+          <Text style={styles.desc}>{entry.description}</Text>
+          <Meta>
+            {entry.counterparty ?? "Someone"} · {entry.age_days}d old
+            {entry.due_date ? ` · due ${entry.due_date}` : ""}
+          </Meta>
+        </View>
+      </View>
+      {canFollowUp ? (
+        <Pressable onPress={onFollowUp} hitSlop={6} style={styles.actionPress}>
+          <Text style={styles.action}>Draft a follow-up →</Text>
         </Pressable>
       ) : null}
-    </View>
+    </Card>
   );
 }
 
 export function WaitingScreen() {
+  const router = useRouter();
+  const { openSheet, showToast } = useShell();
   const [view, setView] = useState<WaitingView | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [note, setNote] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setView(await api.getWaiting());
@@ -64,15 +87,18 @@ export function WaitingScreen() {
     }
   }, [load]);
 
-  const followUp = useCallback(async (sourceId: string) => {
-    setNote(null);
-    try {
-      await api.createDraft({ message_id: sourceId, tone: "warm" });
-      setNote("Drafted a follow-up. Review it in the message thread.");
-    } catch (e) {
-      setNote(e instanceof Error ? e.message : "Could not draft follow-up");
-    }
-  }, []);
+  const followUp = useCallback(
+    (entry: WaitingEntry) => {
+      openSheet(
+        <ApprovalSheet
+          recipient={entry.counterparty ?? "them"}
+          subject={`Following up: ${entry.description}`}
+          onDone={() => showToast("Sent.")}
+        />,
+      );
+    },
+    [openSheet, showToast],
+  );
 
   return (
     <ScrollView
@@ -86,31 +112,37 @@ export function WaitingScreen() {
         />
       }
     >
-      <Text style={styles.heading}>Waiting</Text>
-      {note ? <Text style={styles.note}>{note}</Text> : null}
+      {/* Header with a back button (pushed route) */}
+      <View style={styles.header}>
+        <View style={styles.headerText}>
+          <Eyebrow>Open loops</Eyebrow>
+          <Serif size={34} style={styles.title}>
+            Waiting
+          </Serif>
+        </View>
+        <IconBtn onPress={() => router.back()}>
+          <Ic.Close size={18} color={colors.ink2} />
+        </IconBtn>
+      </View>
 
-      <Text style={styles.section}>People waiting on you</Text>
+      <SectionTitle label="People waiting on you" />
       {view?.waiting_on_you.length ? (
-        view.waiting_on_you.map((e) => (
-          <Entry
-            key={e.id}
-            entry={e}
-            onFollowUp={() => void followUp(e.source_id!)}
-          />
-        ))
+        <View style={styles.stack}>
+          {view.waiting_on_you.map((e) => (
+            <Entry key={e.id} entry={e} onFollowUp={() => followUp(e)} />
+          ))}
+        </View>
       ) : (
         <Text style={styles.empty}>Nobody is blocked on you. Clean slate.</Text>
       )}
 
-      <Text style={styles.section}>You are waiting on</Text>
+      <SectionTitle label="You are waiting on" />
       {view?.you_are_waiting_on.length ? (
-        view.you_are_waiting_on.map((e) => (
-          <Entry
-            key={e.id}
-            entry={e}
-            onFollowUp={() => void followUp(e.source_id!)}
-          />
-        ))
+        <View style={styles.stack}>
+          {view.you_are_waiting_on.map((e) => (
+            <Entry key={e.id} entry={e} onFollowUp={() => followUp(e)} />
+          ))}
+        </View>
       ) : (
         <Text style={styles.empty}>Not waiting on anyone right now.</Text>
       )}
@@ -119,26 +151,30 @@ export function WaitingScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: spacing.lg, gap: spacing.sm },
-  heading: { color: colors.text, fontSize: 28, fontWeight: "700" },
-  note: { color: colors.accent, fontSize: 13 },
-  section: {
-    color: colors.text,
-    fontSize: 18,
+  screen: { flex: 1, backgroundColor: colors.paper },
+  content: {
+    paddingHorizontal: layout.padX,
+    paddingTop: layout.topPad,
+    paddingBottom: spacing.xl,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  headerText: { flex: 1, gap: spacing.xs },
+  title: { marginTop: 2 },
+  stack: { gap: spacing.sm },
+  empty: { color: colors.ink3, fontSize: 13, fontStyle: "italic" },
+  entry: { gap: 8 },
+  entryHead: { flexDirection: "row", gap: 10, alignItems: "flex-start" },
+  entryBody: { flex: 1, minWidth: 0, gap: 3 },
+  desc: { color: colors.ink, fontSize: 15, lineHeight: 20 },
+  actionPress: { alignSelf: "flex-start" },
+  action: {
+    color: colors.accent,
+    fontSize: 13,
     fontWeight: "600",
-    marginTop: spacing.md,
   },
-  empty: { color: colors.textMuted, fontSize: 13, fontStyle: "italic" },
-  entry: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    padding: spacing.md,
-    gap: 2,
-  },
-  desc: { color: colors.text, fontSize: 15 },
-  meta: { color: colors.textMuted, fontSize: 12 },
-  action: { color: colors.accent, fontSize: 13, marginTop: spacing.xs },
 });

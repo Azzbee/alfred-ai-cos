@@ -1,7 +1,6 @@
-// Daily briefing card at the top of Today (PRD 12.7). The morning hero moment: a
-// dated greeting, the summary given room to breathe, and a quiet usefulness ask that
-// collapses to a thank-you once answered. No accent-outlined box, no uppercase micro
-// label (both generic-AI tics); hierarchy comes from type weight and a left accent rule.
+// Daily briefing (PRD 12.7), editorial variant from the Alfred prototype: a mono
+// eyebrow, a large serif "Good morning.", and the summary set in serif at reading size.
+// The morning hero. A quiet usefulness ask sits below, collapsing once answered.
 
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -14,16 +13,18 @@ import {
 import type { Briefing } from "@albert/shared-types";
 
 import { api } from "@/api/client";
-import { colors, spacing } from "@/theme/theme";
+import { Btn, Eyebrow, Serif } from "@/components/ui";
+import { colors, fonts, spacing } from "@/theme/theme";
 
 function greeting(): string {
   const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 18) return "Good afternoon";
-  return "Good evening";
+  if (h < 5) return "Still up.";
+  if (h < 12) return "Good morning.";
+  if (h < 18) return "Good afternoon.";
+  return "Good evening.";
 }
 
-function weekday(iso: string | undefined): string {
+function dateLine(iso: string | undefined): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
@@ -43,7 +44,7 @@ export function BriefingCard() {
     try {
       setBriefing(await api.getTodayBriefing());
     } catch {
-      setBriefing(null); // 404 = none yet today
+      setBriefing(null);
     }
   }, []);
 
@@ -71,113 +72,102 @@ export function BriefingCard() {
     [briefing],
   );
 
-  // --- Empty / generating state ---
+  // Empty / generating
   if (!briefing) {
     return (
-      <View style={styles.card}>
-        <View style={styles.rule} />
-        <View style={styles.cardInner}>
-          <Text style={styles.greeting}>{greeting()}</Text>
-          <Text style={styles.emptyLead}>
-            {busy ? "Reading your inbox and calendar…" : "Ready when you are."}
-          </Text>
-          {busy ? (
-            <ActivityIndicator color={colors.accent} style={styles.spinner} />
-          ) : (
-            <Pressable style={styles.cta} onPress={generate}>
-              <Text style={styles.ctaText}>Write today's briefing</Text>
-            </Pressable>
-          )}
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-        </View>
+      <View style={styles.wrap}>
+        <Eyebrow>{dateLine(new Date().toISOString())}</Eyebrow>
+        <Serif size={40} style={styles.heading}>
+          {greeting()}
+        </Serif>
+        <Text style={styles.lead}>
+          {busy
+            ? "Reading your inbox and calendar…"
+            : "I haven't written today's briefing yet."}
+        </Text>
+        {busy ? (
+          <ActivityIndicator color={colors.accent} style={styles.spinner} />
+        ) : (
+          <View style={styles.ctaRow}>
+            <Btn
+              label="Write today's briefing"
+              kind="accent"
+              onPress={generate}
+            />
+          </View>
+        )}
+        {error ? <Text style={styles.error}>{error}</Text> : null}
       </View>
     );
   }
 
-  // --- Briefing present ---
+  // Present
   const answered = briefing.user_feedback != null;
   return (
-    <View style={styles.card}>
-      <View style={styles.rule} />
-      <View style={styles.cardInner}>
-        <Text style={styles.greeting}>
-          {greeting()}
-          {weekday(briefing.date) ? ` · ${weekday(briefing.date)}` : ""}
-        </Text>
-        <Text style={styles.summary}>{briefing.summary}</Text>
+    <View style={styles.wrap}>
+      <Eyebrow>
+        {dateLine(briefing.date)
+          ? `${dateLine(briefing.date)} · a briefing`
+          : "a briefing"}
+      </Eyebrow>
+      <Serif size={40} style={styles.heading}>
+        {greeting()}
+      </Serif>
+      <Serif size={20} color={colors.ink2} style={styles.summary}>
+        {briefing.summary}
+      </Serif>
 
-        <View style={styles.feedbackRow}>
-          {answered ? (
-            <Text style={styles.feedbackThanks}>
-              {briefing.user_feedback === "useful"
-                ? "Glad it helped."
-                : "Noted, I'll tune it."}
-            </Text>
-          ) : (
-            <>
-              <Text style={styles.feedbackAsk}>Was this useful?</Text>
-              <Pressable hitSlop={8} onPress={() => void sendFeedback(true)}>
-                <Text style={styles.feedbackYes}>Yes</Text>
-              </Pressable>
-              <Pressable hitSlop={8} onPress={() => void sendFeedback(false)}>
-                <Text style={styles.feedbackNo}>No</Text>
-              </Pressable>
-            </>
-          )}
-        </View>
+      <View style={styles.feedbackRow}>
+        {answered ? (
+          <Text style={styles.thanks}>
+            {briefing.user_feedback === "useful"
+              ? "Glad it helped."
+              : "Noted, I'll tune it."}
+          </Text>
+        ) : (
+          <>
+            <Text style={styles.ask}>Was this useful?</Text>
+            <Pressable hitSlop={8} onPress={() => void sendFeedback(true)}>
+              <Text style={styles.yes}>Yes</Text>
+            </Pressable>
+            <Pressable hitSlop={8} onPress={() => void sendFeedback(false)}>
+              <Text style={styles.no}>No</Text>
+            </Pressable>
+          </>
+        )}
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    flexDirection: "row",
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    overflow: "hidden",
+  wrap: { paddingVertical: spacing.sm, gap: spacing.sm },
+  heading: { marginTop: spacing.sm },
+  // The summary is the hero: serif, reading size, generous leading.
+  summary: { marginTop: spacing.md, lineHeight: 27 },
+  lead: {
+    marginTop: spacing.sm,
+    fontSize: 16,
+    lineHeight: 24,
+    color: colors.ink2,
   },
-  // A single 3px accent rule down the left edge gives identity without framing the
-  // whole card in accent (the generic-AI outlined-box look).
-  rule: { width: 3, backgroundColor: colors.accent },
-  cardInner: { flex: 1, padding: spacing.lg, gap: spacing.sm },
-
-  greeting: { color: colors.textMuted, fontSize: 13, fontWeight: "500" },
-  // The hero: large, near-white, generous line height. This is the one thing the eye
-  // should land on first thing in the morning.
-  summary: {
-    color: colors.text,
-    fontSize: 17,
-    lineHeight: 25,
-    fontWeight: "400",
-  },
+  spinner: { alignSelf: "flex-start", marginTop: spacing.md },
+  ctaRow: { flexDirection: "row", marginTop: spacing.md },
+  error: { color: colors.warn, fontSize: 13, marginTop: spacing.sm },
 
   feedbackRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    marginTop: spacing.sm,
+    marginTop: spacing.lg,
   },
-  feedbackAsk: { color: colors.textMuted, fontSize: 13, marginRight: "auto" },
-  feedbackYes: { color: colors.accent, fontSize: 13, fontWeight: "600" },
-  feedbackNo: { color: colors.textMuted, fontSize: 13, fontWeight: "600" },
-  feedbackThanks: {
-    color: colors.textMuted,
-    fontSize: 13,
-    fontStyle: "italic",
+  ask: {
+    fontFamily: fonts.mono,
+    fontSize: 12,
+    color: colors.ink3,
+    marginRight: "auto",
   },
-
-  // Empty / generating
-  emptyLead: { color: colors.text, fontSize: 17, lineHeight: 25 },
-  spinner: { alignSelf: "flex-start", marginTop: spacing.xs },
-  cta: {
-    alignSelf: "flex-start",
-    marginTop: spacing.xs,
-    backgroundColor: colors.accent,
-    borderRadius: 10,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-  },
-  ctaText: { color: "#0E0F12", fontSize: 14, fontWeight: "700" },
-  error: { color: "#E5484D", fontSize: 13, marginTop: spacing.xs },
+  yes: { color: colors.accent, fontSize: 13, fontWeight: "600" },
+  no: { color: colors.ink3, fontSize: 13, fontWeight: "600" },
+  thanks: { fontSize: 13, fontStyle: "italic", color: colors.ink3 },
 });

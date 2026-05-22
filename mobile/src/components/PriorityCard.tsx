@@ -1,69 +1,127 @@
-// A single Today priority card (PRD 10.1). Shows title, reason, due date, and the
-// actions the slice supports. "Review draft" is the path to draft -> approve.
+// A single Today priority card, pixel-matched to the Alfred prototype's PriorityCard:
+// circular check, urgency pill (warn "Today" / accent deadline), optional person
+// avatar+name from counterparty, serif title, mono "WHY" + reason, Act/Snooze/Not
+// important. Real backend fields (TodayPriority); the prototype's fake "minutes" is
+// omitted since the backend doesn't provide it.
 
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef } from "react";
+import { Animated, StyleSheet, Text, View } from "react-native";
 import type { TodayPriority } from "@albert/shared-types";
 
-import { colors, priorityColor, spacing } from "@/theme/theme";
+import { Avatar, Btn, Card, Check, Meta, Pill, Serif } from "@/components/ui";
+import { urgencyFor } from "@/lib/today";
+import { colors, fonts, spacing } from "@/theme/theme";
 
 type Props = {
   item: TodayPriority;
+  done?: boolean;
+  onAct: () => void;
   onMarkDone: () => void;
   onSnooze: () => void;
+  onDismiss?: () => void;
 };
 
-export function PriorityCard({ item, onMarkDone, onSnooze }: Props) {
+export function PriorityCard({
+  item,
+  done = false,
+  onAct,
+  onMarkDone,
+  onSnooze,
+  onDismiss,
+}: Props) {
+  const u = urgencyFor(item);
+  // Fade to 0.55 when completed (prototype's `transition: opacity .25s`).
+  const opacity = useRef(new Animated.Value(done ? 0.55 : 1)).current;
+  useEffect(() => {
+    Animated.timing(opacity, {
+      toValue: done ? 0.55 : 1,
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
+  }, [done, opacity]);
+
   return (
-    <View style={styles.card}>
-      <View style={styles.headerRow}>
-        <View style={[styles.badge, { backgroundColor: priorityColor[item.priority] }]}>
-          <Text style={styles.badgeText}>{item.priority.toUpperCase()}</Text>
+    <Animated.View style={{ opacity }}>
+      <Card>
+        <View style={styles.row}>
+          <Check done={done} onPress={onMarkDone} style={styles.check} />
+          <View style={styles.body}>
+            <View style={styles.metaRow}>
+              <Pill label={u.label} kind={u.warn ? "warn" : "accent"} dot />
+              {item.confidence < 0.6 ? (
+                <Text style={styles.suggestion}>suggestion</Text>
+              ) : null}
+              {item.counterparty ? (
+                <View style={styles.person}>
+                  <Avatar name={item.counterparty} size={20} />
+                  <Meta>{item.counterparty.split(" ")[0]}</Meta>
+                </View>
+              ) : null}
+            </View>
+
+            <Serif
+              size={18}
+              color={done ? colors.ink4 : colors.ink}
+              style={[styles.title, done && styles.titleDone]}
+            >
+              {item.title}
+            </Serif>
+
+            <Text style={styles.reasonWrap}>
+              <Text style={styles.whyLabel}>WHY </Text>
+              <Text style={styles.reason}>{item.reason}</Text>
+            </Text>
+
+            <View style={styles.actions}>
+              <Btn label="Act" kind="accent" tiny onPress={onAct} />
+              <Btn label="Snooze" kind="ghost" tiny onPress={onSnooze} />
+              {onDismiss ? (
+                <Btn
+                  label="Not important"
+                  kind="ghost"
+                  tiny
+                  onPress={onDismiss}
+                />
+              ) : null}
+            </View>
+          </View>
         </View>
-        {item.due_date ? <Text style={styles.due}>Due {item.due_date}</Text> : null}
-      </View>
-
-      <Text style={styles.title}>{item.title}</Text>
-      <Text style={styles.reason}>{item.reason}</Text>
-
-      {item.confidence < 0.6 ? (
-        <Text style={styles.suggestion}>Suggestion · low confidence</Text>
-      ) : null}
-
-      <View style={styles.actions}>
-        <Pressable style={styles.action} onPress={onMarkDone}>
-          <Text style={styles.actionText}>Mark done</Text>
-        </Pressable>
-        <Pressable style={styles.action} onPress={onSnooze}>
-          <Text style={styles.actionText}>Snooze</Text>
-        </Pressable>
-      </View>
-    </View>
+      </Card>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+  row: { flexDirection: "row", gap: spacing.md },
+  check: { marginTop: 2 },
+  body: { flex: 1, minWidth: 0, gap: 6 },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  suggestion: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    color: colors.ink4,
+    fontStyle: "italic",
+  },
+  person: {
+    marginLeft: "auto",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  title: { marginTop: 2 },
+  titleDone: { textDecorationLine: "line-through" },
+  reasonWrap: { marginTop: 2 },
+  whyLabel: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 0.8,
+    color: colors.ink4,
+  },
+  reason: { fontSize: 13, lineHeight: 19, color: colors.ink3 },
+  actions: {
+    flexDirection: "row",
     gap: spacing.sm,
+    marginTop: spacing.sm,
+    flexWrap: "wrap",
   },
-  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  badge: { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: 6 },
-  badgeText: { color: "#0E0F12", fontSize: 10, fontWeight: "700" },
-  due: { color: colors.textMuted, fontSize: 12 },
-  title: { color: colors.text, fontSize: 16, fontWeight: "600" },
-  reason: { color: colors.textMuted, fontSize: 13, lineHeight: 18 },
-  suggestion: { color: priorityColor.low, fontSize: 11, fontStyle: "italic" },
-  actions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.xs },
-  action: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  actionText: { color: colors.text, fontSize: 13 },
 });

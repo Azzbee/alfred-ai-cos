@@ -1,4 +1,5 @@
 // Onboarding calibration (PRD 9.1). Three questions, then writes to preferences.
+// Editorial theme: serif header, mono prompts, accent-tinted selected chips.
 
 import { useState } from "react";
 import {
@@ -12,7 +13,13 @@ import {
 import type { OnboardingPrefs } from "@albert/shared-types";
 
 import { api } from "@/api/client";
-import { colors, spacing } from "@/theme/theme";
+import {
+  Btn,
+  ScreenHeader,
+  inputPlaceholder,
+  inputStyle,
+} from "@/components/ui";
+import { colors, fonts, radius, spacing } from "@/theme/theme";
 
 type Question = {
   key: keyof OnboardingPrefs;
@@ -73,17 +80,18 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Set up Albert</Text>
-      <Text style={styles.sub}>
-        A few quick questions so Albert knows what matters to you.
-      </Text>
+      <ScreenHeader
+        eyebrow="Welcome"
+        title="Set up Albert"
+        subtitle="A few quick questions so Albert knows what matters to you."
+      />
 
       <View style={styles.block}>
         <Text style={styles.prompt}>What should Albert call you?</Text>
         <TextInput
-          style={styles.nameInput}
+          style={inputStyle}
           placeholder="Your name (used to sign drafts)"
-          placeholderTextColor={colors.textMuted}
+          placeholderTextColor={inputPlaceholder}
           value={prefs.name ?? ""}
           onChangeText={(t) => setPrefs((p) => ({ ...p, name: t }))}
           autoCapitalize="words"
@@ -117,52 +125,47 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
         </View>
       ))}
 
-      <Pressable
-        style={[styles.cta, !allAnswered && styles.ctaDisabled]}
-        onPress={() => void submit()}
-        disabled={!allAnswered || saving}
-      >
-        <Text style={styles.ctaText}>
-          {saving ? "Saving…" : "Start using Albert"}
-        </Text>
-      </Pressable>
+      <View style={styles.ctaWrap}>
+        <Btn
+          label={saving ? "Saving…" : "Start using Albert"}
+          kind="accent"
+          onPress={() => void submit()}
+          disabled={!allAnswered || saving}
+        />
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: spacing.xl, gap: spacing.lg },
-  title: { color: colors.text, fontSize: 28, fontWeight: "800" },
-  sub: { color: colors.textMuted, fontSize: 14 },
+  screen: { flex: 1, backgroundColor: colors.paper },
+  content: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.xl,
+    gap: spacing.lg,
+  },
   block: { gap: spacing.sm },
-  prompt: { color: colors.text, fontSize: 16, fontWeight: "600" },
-  nameInput: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    color: colors.text,
+  prompt: {
+    fontFamily: fonts.mono,
+    fontSize: 12,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    color: colors.ink3,
   },
   options: { gap: spacing.sm },
   option: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
+    backgroundColor: colors.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.hair2,
+    borderRadius: radius.sm,
     padding: spacing.md,
   },
-  optionSelected: { borderColor: colors.accent, backgroundColor: "#1B2433" },
-  optionText: { color: colors.text, fontSize: 15 },
-  optionTextSelected: { color: colors.accent, fontWeight: "600" },
-  cta: {
-    backgroundColor: colors.accent,
-    borderRadius: 12,
-    paddingVertical: spacing.md,
-    alignItems: "center",
+  optionSelected: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
   },
-  ctaDisabled: { opacity: 0.4 },
-  ctaText: { color: "#0E0F12", fontSize: 16, fontWeight: "700" },
+  optionText: { color: colors.ink, fontSize: 15 },
+  optionTextSelected: { color: colors.accentInk, fontWeight: "600" },
+  ctaWrap: { marginTop: spacing.sm },
 });

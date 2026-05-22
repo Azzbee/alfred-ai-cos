@@ -1,6 +1,6 @@
-// Onboarding entry (PRD 9.1). One-sentence value prop, then Connect Gmail.
-// Opens the backend-provided Google consent URL; the backend redirects back via
-// the albert://auth deep link, handled in app/_layout.tsx.
+// Onboarding entry (PRD 9.1). Editorial hero: 阿福 eyebrow, serif Albert wordmark,
+// serif tagline, then Connect Gmail. Opens the backend-provided Google consent URL;
+// the backend redirects back via the albert://auth deep link, handled in _layout.tsx.
 
 import { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
@@ -8,7 +8,14 @@ import * as WebBrowser from "expo-web-browser";
 
 import { api } from "@/api/client";
 import { getToken, setToken } from "@/api/auth";
-import { colors, spacing } from "@/theme/theme";
+import {
+  Btn,
+  Eyebrow,
+  Serif,
+  inputPlaceholder,
+  inputStyle,
+} from "@/components/ui";
+import { colors, fonts, radius, spacing } from "@/theme/theme";
 
 type Props = { onConnected: () => void };
 
@@ -26,7 +33,9 @@ export function ConnectScreen({ onConnected }: Props) {
       // The deep-link handler stores the token; re-check before advancing.
       if (await getToken()) onConnected();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not start Google sign-in");
+      setError(
+        e instanceof Error ? e.message : "Could not start Google sign-in",
+      );
     } finally {
       setBusy(false);
     }
@@ -50,29 +59,42 @@ export function ConnectScreen({ onConnected }: Props) {
 
   return (
     <View style={styles.screen}>
-      <Text style={styles.title}>Albert</Text>
-      <Text style={styles.tagline}>
-        Connect Gmail and Calendar. I will find what matters, what you are forgetting, and what
-        needs action.
-      </Text>
-      <Pressable style={styles.button} onPress={connect} disabled={busy}>
-        <Text style={styles.buttonText}>{busy ? "Opening…" : "Connect Gmail"}</Text>
-      </Pressable>
+      <Eyebrow>阿福 · Your chief of staff</Eyebrow>
+      <Serif size={52} style={styles.title}>
+        Albert
+      </Serif>
+      <Serif size={22} color={colors.ink2} style={styles.tagline}>
+        Connect Gmail and Calendar. I'll find what matters, what you're
+        forgetting, and what needs action.
+      </Serif>
+
+      <View style={styles.ctaWrap}>
+        <Btn
+          label={busy ? "Opening…" : "Connect Gmail"}
+          kind="accent"
+          onPress={connect}
+          disabled={busy}
+        />
+      </View>
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {__DEV__ ? (
         <View style={styles.devBox}>
           <Text style={styles.devLabel}>Dev login (skips OAuth)</Text>
           <TextInput
-            style={styles.devInput}
+            style={[inputStyle, styles.devInput]}
             value={devEmail}
             onChangeText={setDevEmail}
             autoCapitalize="none"
             keyboardType="email-address"
             placeholder="email"
-            placeholderTextColor={colors.textMuted}
+            placeholderTextColor={inputPlaceholder}
           />
-          <Pressable style={styles.devButton} onPress={devLogin} disabled={busy}>
+          <Pressable
+            style={styles.devButton}
+            onPress={devLogin}
+            disabled={busy}
+          >
             <Text style={styles.devButtonText}>Dev sign in</Text>
           </Pressable>
         </View>
@@ -84,38 +106,28 @@ export function ConnectScreen({ onConnected }: Props) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.paper,
     padding: spacing.xl,
     justifyContent: "center",
-    gap: spacing.lg,
   },
-  title: { color: colors.text, fontSize: 40, fontWeight: "800" },
-  tagline: { color: colors.textMuted, fontSize: 16, lineHeight: 24 },
-  button: { backgroundColor: colors.accent, borderRadius: 12, paddingVertical: spacing.md, alignItems: "center" },
-  buttonText: { color: "#0E0F12", fontSize: 16, fontWeight: "700" },
-  error: { color: "#E5484D", fontSize: 13 },
+  title: { marginTop: spacing.sm },
+  tagline: { marginTop: spacing.md, lineHeight: 29 },
+  ctaWrap: { marginTop: spacing.xl, alignSelf: "flex-start" },
+  error: { color: colors.warn, fontSize: 13, marginTop: spacing.sm },
   devBox: {
     marginTop: spacing.xl,
     padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.hair2,
+    borderRadius: radius.sm,
     gap: spacing.sm,
   },
-  devLabel: { color: colors.textMuted, fontSize: 12 },
-  devInput: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    color: colors.text,
-  },
+  devLabel: { fontFamily: fonts.mono, color: colors.ink3, fontSize: 12 },
+  devInput: { borderRadius: radius.sm },
   devButton: {
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.accent,
-    borderRadius: 8,
+    borderRadius: radius.pill,
     paddingVertical: spacing.sm,
     alignItems: "center",
   },

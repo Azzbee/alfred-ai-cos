@@ -29,7 +29,7 @@ export default function Index() {
       <View
         style={{
           flex: 1,
-          backgroundColor: colors.bg,
+          backgroundColor: colors.paper,
           justifyContent: "center",
         }}
       >

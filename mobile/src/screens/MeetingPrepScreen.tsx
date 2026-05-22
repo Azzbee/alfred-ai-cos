@@ -1,5 +1,5 @@
 // Meeting prep brief (PRD 10.5). Loads context, open commitments, and suggested
-// questions for one upcoming event.
+// questions for one upcoming event. Editorial theme: serif title + summary, mono meta.
 
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -12,7 +12,21 @@ import {
 import type { MeetingPrep } from "@albert/shared-types";
 
 import { api } from "@/api/client";
+import { Eyebrow, Meta, SectionTitle, Serif } from "@/components/ui";
 import { colors, spacing } from "@/theme/theme";
+
+function dateLine(iso: string | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
 
 export function MeetingPrepScreen({ eventId }: { eventId: string }) {
   const [prep, setPrep] = useState<MeetingPrep | null>(null);
@@ -48,39 +62,50 @@ export function MeetingPrepScreen({ eventId }: { eventId: string }) {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>{prep.event.title ?? "Meeting"}</Text>
+      <Eyebrow>Meeting prep</Eyebrow>
+      <Serif size={30} style={styles.title}>
+        {prep.event.title ?? "Meeting"}
+      </Serif>
       {prep.event.start_time ? (
-        <Text style={styles.meta}>
-          {new Date(prep.event.start_time).toLocaleString()}
-        </Text>
+        <Meta style={styles.when}>{dateLine(prep.event.start_time)}</Meta>
       ) : null}
-      <Text style={styles.meta}>
-        {prep.related_message_count} related message(s) ·{" "}
-        {prep.event.attendees.length} attendee(s)
-      </Text>
+      <Meta>
+        {prep.related_message_count} related message
+        {prep.related_message_count === 1 ? "" : "s"} ·{" "}
+        {prep.event.attendees.length} attendee
+        {prep.event.attendees.length === 1 ? "" : "s"}
+      </Meta>
 
-      <Text style={styles.section}>Context</Text>
-      <Text style={styles.body}>{prep.summary}</Text>
+      <SectionTitle label="Context" />
+      <Serif size={18} color={colors.ink2} style={styles.summary}>
+        {prep.summary}
+      </Serif>
 
       {prep.open_commitments.length ? (
         <>
-          <Text style={styles.section}>Open commitments</Text>
-          {prep.open_commitments.map((c, i) => (
-            <Text key={i} style={styles.item}>
-              • {c}
-            </Text>
-          ))}
+          <SectionTitle label="Open commitments" />
+          <View style={styles.list}>
+            {prep.open_commitments.map((c, i) => (
+              <View key={i} style={styles.bulletRow}>
+                <Text style={styles.bullet}>·</Text>
+                <Text style={styles.item}>{c}</Text>
+              </View>
+            ))}
+          </View>
         </>
       ) : null}
 
       {prep.suggested_questions.length ? (
         <>
-          <Text style={styles.section}>Suggested questions</Text>
-          {prep.suggested_questions.map((q, i) => (
-            <Text key={i} style={styles.item}>
-              • {q}
-            </Text>
-          ))}
+          <SectionTitle label="Suggested questions" />
+          <View style={styles.list}>
+            {prep.suggested_questions.map((q, i) => (
+              <View key={i} style={styles.bulletRow}>
+                <Text style={styles.bullet}>·</Text>
+                <Text style={styles.item}>{q}</Text>
+              </View>
+            ))}
+          </View>
         </>
       ) : null}
     </ScrollView>
@@ -88,23 +113,24 @@ export function MeetingPrepScreen({ eventId }: { eventId: string }) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: spacing.lg, gap: spacing.sm },
+  screen: { flex: 1, backgroundColor: colors.paper },
+  content: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.xl,
+  },
   centered: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.bg,
+    backgroundColor: colors.paper,
   },
-  title: { color: colors.text, fontSize: 24, fontWeight: "700" },
-  meta: { color: colors.textMuted, fontSize: 13 },
-  section: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "600",
-    marginTop: spacing.md,
-  },
-  body: { color: colors.textMuted, fontSize: 14, lineHeight: 20 },
-  item: { color: colors.textMuted, fontSize: 14, lineHeight: 20 },
-  error: { color: "#E5484D", fontSize: 14, padding: spacing.lg },
+  title: { marginTop: 2, marginBottom: spacing.xs },
+  when: { marginBottom: 2 },
+  summary: { marginTop: spacing.sm, lineHeight: 25 },
+  list: { gap: 6 },
+  bulletRow: { flexDirection: "row", gap: spacing.sm },
+  bullet: { color: colors.ink4, fontSize: 15, lineHeight: 21 },
+  item: { flex: 1, color: colors.ink2, fontSize: 15, lineHeight: 21 },
+  error: { color: colors.warn, fontSize: 14, padding: spacing.lg },
 });

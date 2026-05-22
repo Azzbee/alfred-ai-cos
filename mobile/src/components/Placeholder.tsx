@@ -2,12 +2,13 @@
 
 import { StyleSheet, Text, View } from "react-native";
 
+import { Serif } from "@/components/ui";
 import { colors, spacing } from "@/theme/theme";
 
 export function Placeholder({ title, note }: { title: string; note: string }) {
   return (
     <View style={styles.screen}>
-      <Text style={styles.title}>{title}</Text>
+      <Serif size={26}>{title}</Serif>
       <Text style={styles.note}>{note}</Text>
     </View>
   );
@@ -16,12 +17,16 @@ export function Placeholder({ title, note }: { title: string; note: string }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.paper,
     alignItems: "center",
     justifyContent: "center",
     padding: spacing.xl,
     gap: spacing.sm,
   },
-  title: { color: colors.text, fontSize: 24, fontWeight: "700" },
-  note: { color: colors.textMuted, fontSize: 14, textAlign: "center" },
+  note: {
+    color: colors.ink3,
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center",
+  },
 });

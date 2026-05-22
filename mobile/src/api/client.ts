@@ -54,9 +54,12 @@ export const api = {
   // mobile OAuth round-trip (which needs a LAN-reachable redirect URI). The backend
   // returns 404 outside ENVIRONMENT=development.
   devSession: (email: string) =>
-    request<SessionToken>(`/auth/dev-session?email=${encodeURIComponent(email)}`, {
-      method: "POST",
-    }),
+    request<SessionToken>(
+      `/auth/dev-session?email=${encodeURIComponent(email)}`,
+      {
+        method: "POST",
+      },
+    ),
   sync: () => request<SyncResponse>("/sync", { method: "POST" }),
   getToday: () => request<TodayDashboard>("/today"),
   listCommitments: () => request<Commitment[]>("/commitments"),

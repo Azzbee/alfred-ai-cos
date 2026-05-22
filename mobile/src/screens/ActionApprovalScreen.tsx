@@ -1,12 +1,21 @@
 // Action approval queue (PRD 10.6, 17.3). Each pending action shows what it does,
 // its content, and its risk. Level 4-5 actions require an explicit second confirm.
+// Editorial theme: danger maps to the warn (terracotta) palette, risk to a mono pill.
 
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import type { ActionProposal } from "@albert/shared-types";
 
 import { api } from "@/api/client";
-import { colors, spacing } from "@/theme/theme";
+import { Btn, Card, Pill, ScreenHeader, Serif } from "@/components/ui";
+import { colors, fonts, radius, spacing } from "@/theme/theme";
 
 const RISK_LABEL: Record<number, string> = {
   0: "Read-only",
@@ -28,14 +37,17 @@ function ActionCard({
 }) {
   const danger = action.strong_confirmation;
   return (
-    <View style={[styles.card, danger && styles.cardDanger]}>
+    <Card style={danger ? styles.cardDanger : undefined}>
       <View style={styles.headerRow}>
-        <Text style={styles.type}>{action.action_type}</Text>
-        <Text style={[styles.risk, danger && styles.riskDanger]}>
-          {RISK_LABEL[action.risk_level] ?? `Level ${action.risk_level}`}
-        </Text>
+        <Serif size={17}>{action.action_type}</Serif>
+        <Pill
+          label={RISK_LABEL[action.risk_level] ?? `Level ${action.risk_level}`}
+          kind={danger ? "warn" : "muted"}
+        />
       </View>
-      {action.reason ? <Text style={styles.reason}>{action.reason}</Text> : null}
+      {action.reason ? (
+        <Text style={styles.reason}>{action.reason}</Text>
+      ) : null}
       {action.proposed_content ? (
         <Text style={styles.cardContent} numberOfLines={6}>
           {action.proposed_content}
@@ -43,18 +55,24 @@ function ActionCard({
       ) : null}
       {danger ? (
         <Text style={styles.warning}>
-          This is irreversible or financial. You will be asked to confirm again.
+          This is irreversible or financial. You'll be asked to confirm again.
         </Text>
       ) : null}
       <View style={styles.actions}>
-        <Pressable style={styles.reject} onPress={onReject}>
-          <Text style={styles.rejectText}>Reject</Text>
-        </Pressable>
-        <Pressable style={[styles.approve, danger && styles.approveDanger]} onPress={onApprove}>
-          <Text style={styles.approveText}>{danger ? "Approve…" : "Approve"}</Text>
-        </Pressable>
+        <View style={styles.actionSlot}>
+          <Btn label="Reject" kind="ghost" onPress={onReject} />
+        </View>
+        <View style={styles.actionSlot}>
+          {danger ? (
+            <Pressable style={styles.approveDanger} onPress={onApprove}>
+              <Text style={styles.approveDangerText}>Approve…</Text>
+            </Pressable>
+          ) : (
+            <Btn label="Approve" kind="accent" onPress={onApprove} />
+          )}
+        </View>
       </View>
-    </View>
+    </Card>
   );
 }
 
@@ -90,7 +108,11 @@ export function ActionApprovalScreen() {
           "This is irreversible or moves money. Are you sure?",
           [
             { text: "Cancel", style: "cancel" },
-            { text: "Yes, do it", style: "destructive", onPress: () => void run(true) },
+            {
+              text: "Yes, do it",
+              style: "destructive",
+              onPress: () => void run(true),
+            },
           ],
         );
       } else {
@@ -110,17 +132,19 @@ export function ActionApprovalScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.heading}>Approvals</Text>
+      <ScreenHeader eyebrow="Needs you" title="Approvals" />
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {actions.length ? (
-        actions.map((a) => (
-          <ActionCard
-            key={a.id}
-            action={a}
-            onApprove={() => void approve(a)}
-            onReject={() => void reject(a)}
-          />
-        ))
+        <View style={styles.stack}>
+          {actions.map((a) => (
+            <ActionCard
+              key={a.id}
+              action={a}
+              onApprove={() => void approve(a)}
+              onReject={() => void reject(a)}
+            />
+          ))}
+        </View>
       ) : (
         <Text style={styles.empty}>Nothing waiting for your approval.</Text>
       )}
@@ -129,50 +153,48 @@ export function ActionApprovalScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: spacing.lg, gap: spacing.md },
-  heading: { color: colors.text, fontSize: 28, fontWeight: "700" },
-  error: { color: "#E5484D", fontSize: 13 },
-  empty: { color: colors.textMuted, fontSize: 13, fontStyle: "italic" },
-  card: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    padding: spacing.md,
-    gap: spacing.sm,
+  screen: { flex: 1, backgroundColor: colors.paper },
+  content: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.xl,
   },
-  cardDanger: { borderColor: "#E5484D" },
-  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  type: { color: colors.text, fontSize: 15, fontWeight: "600" },
-  risk: { color: colors.textMuted, fontSize: 12 },
-  riskDanger: { color: "#E5484D", fontWeight: "700" },
-  reason: { color: colors.textMuted, fontSize: 13, lineHeight: 18 },
+  stack: { gap: spacing.md },
+  error: { color: colors.warn, fontSize: 13, marginTop: spacing.sm },
+  empty: { color: colors.ink3, fontSize: 13, fontStyle: "italic" },
+  cardDanger: { borderColor: colors.warn },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: spacing.sm,
+  },
+  reason: { color: colors.ink3, fontSize: 13, lineHeight: 18 },
+  // The proposed draft, set apart as a quoted block on a slightly deeper paper.
   cardContent: {
-    color: colors.text,
+    color: colors.ink2,
     fontSize: 13,
-    backgroundColor: colors.bg,
-    borderRadius: 8,
+    lineHeight: 19,
+    backgroundColor: colors.paper2,
+    borderRadius: radius.sm,
     padding: spacing.sm,
+    marginTop: spacing.sm,
   },
-  warning: { color: "#F5A623", fontSize: 12 },
-  actions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.xs },
-  reject: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingVertical: spacing.sm,
+  warning: {
+    fontFamily: fonts.mono,
+    color: colors.warn,
+    fontSize: 11.5,
+    lineHeight: 16,
+    marginTop: spacing.sm,
+  },
+  actions: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.md },
+  actionSlot: { flex: 1 },
+  approveDanger: {
+    backgroundColor: colors.warn,
+    borderRadius: radius.pill,
+    paddingVertical: 10,
     alignItems: "center",
+    justifyContent: "center",
   },
-  rejectText: { color: colors.text },
-  approve: {
-    flex: 1,
-    backgroundColor: colors.accent,
-    borderRadius: 8,
-    paddingVertical: spacing.sm,
-    alignItems: "center",
-  },
-  approveDanger: { backgroundColor: "#E5484D" },
-  approveText: { color: "#0E0F12", fontWeight: "700" },
+  approveDangerText: { color: "#FFFFFF", fontSize: 14, fontWeight: "600" },
 });
