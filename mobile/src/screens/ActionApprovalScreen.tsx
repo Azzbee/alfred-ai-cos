@@ -11,11 +11,13 @@ import {
   Text,
   View,
 } from "react-native";
+import { useRouter } from "expo-router";
 import type { ActionProposal } from "@albert/shared-types";
 
 import { api } from "@/api/client";
-import { Btn, Card, Pill, ScreenHeader, Serif } from "@/components/ui";
-import { colors, fonts, radius, spacing } from "@/theme/theme";
+import { Ic } from "@/components/icons";
+import { Btn, Card, Eyebrow, IconBtn, Pill, Serif } from "@/components/ui";
+import { colors, fonts, layout, radius, spacing } from "@/theme/theme";
 
 const RISK_LABEL: Record<number, string> = {
   0: "Read-only",
@@ -77,6 +79,7 @@ function ActionCard({
 }
 
 export function ActionApprovalScreen() {
+  const router = useRouter();
   const [actions, setActions] = useState<ActionProposal[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -132,7 +135,17 @@ export function ActionApprovalScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <ScreenHeader eyebrow="Needs you" title="Approvals" />
+      <View style={styles.header}>
+        <View style={styles.headerText}>
+          <Eyebrow>Needs you</Eyebrow>
+          <Serif size={34} style={styles.title}>
+            Approvals
+          </Serif>
+        </View>
+        <IconBtn onPress={() => router.back()}>
+          <Ic.Close size={18} color={colors.ink2} />
+        </IconBtn>
+      </View>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {actions.length ? (
         <View style={styles.stack}>
@@ -156,9 +169,18 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.paper },
   content: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
+    paddingTop: layout.topPad,
     paddingBottom: spacing.xl,
   },
+  header: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: spacing.sm,
+  },
+  headerText: { flex: 1, gap: spacing.xs },
+  title: { marginTop: 2 },
   stack: { gap: spacing.md },
   error: { color: colors.warn, fontSize: 13, marginTop: spacing.sm },
   empty: { color: colors.ink3, fontSize: 13, fontStyle: "italic" },
