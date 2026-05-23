@@ -61,6 +61,26 @@ class DraftOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class InboxMessageOut(BaseModel):
+    """One inbox message for the Inbox screen. `category` collapses the backend's
+    fine-grained MessageClassification into the four UI buckets; `take` is the
+    extraction pipeline's one-line reason (stored as body_summary)."""
+
+    id: str
+    sender: str
+    subject: str | None
+    snippet: str | None
+    take: str | None  # Albert's one-line read (body_summary)
+    category: str  # "Needs Reply" | "Needs Decision" | "Waiting" | "FYI"
+    sent_at: datetime | None
+    action_required: bool
+
+
+class InboxOut(BaseModel):
+    messages: list[InboxMessageOut]
+    filtered_count: int  # spam/noise filtered out (the "I filtered N" line)
+
+
 class CommitmentDraftRequest(BaseModel):
     tone: str = "concise"
     instruction: str | None = None

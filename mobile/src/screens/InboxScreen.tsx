@@ -1,12 +1,14 @@
-// Inbox — the Priority Inbox, pixel-matched to the Alfred prototype. Eyebrow,
-// serif "What matters.", category strip with counts, Alfred briefing banner, and
-// expandable message cards (Alfred's take + confidence, preview, actions).
+// Inbox — the Priority Inbox, pixel-matched to the Alfred prototype. Eyebrow, serif
+// "What matters.", category strip with live counts, a briefing banner, and expandable
+// message cards (Albert's take + preview + actions).
 //
-// Runs on scripted fixtures (src/data/demo.ts) because no inbox backend exists yet.
-// The Approval sheet opens from "Draft reply". See DESIGN.md.
+// Real data: GET /messages returns the user's synced, classified Gmail. Categories are
+// the backend's MessageClassification collapsed into four buckets. The per-message
+// "confidence %" and "suggested action" from the prototype are omitted — no real source.
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   LayoutAnimation,
   Platform,
   Pressable,
@@ -16,20 +18,9 @@ import {
   UIManager,
   View,
 } from "react-native";
+import type { InboxMessage } from "@albert/shared-types";
 
-// LayoutAnimation needs an opt-in on old-arch Android; harmless elsewhere.
-if (
-  Platform.OS === "android" &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
-
-// A gentle ease for expand/collapse and message removal.
-const ease = () =>
-  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-
-import { INBOX, INBOX_BRIEFING, type InboxMessage } from "@/data/demo";
+import { api } from "@/api/client";
 import { ApprovalSheet } from "@/screens/sheets/ApprovalSheet";
 import { AlfMark } from "@/components/icons";
 import { useShell } from "@/components/Shell";
@@ -45,34 +36,79 @@ import {
 } from "@/components/ui";
 import { colors, fonts, layout, radius, spacing } from "@/theme/theme";
 
-const CATS = [
+// LayoutAnimation opt-in for old-arch Android; harmless elsewhere.
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+const ease = () =>
+  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+type Category = InboxMessage["category"];
+
+const CATS: { id: string; label: string; match: Category | null }[] = [
   { id: "all", label: "All", match: null },
   { id: "reply", label: "Needs Reply", match: "Needs Reply" },
   { id: "decide", label: "Needs Decision", match: "Needs Decision" },
-  { id: "wait", label: "Waiting", match: "Waiting For You" },
+  { id: "wait", label: "Waiting", match: "Waiting" },
   { id: "fyi", label: "FYI", match: "FYI" },
-] as const;
+];
 
-function catPill(cat: InboxMessage["cat"]): "warn" | "accent" | "muted" {
+function catPill(cat: Category): "warn" | "accent" | "muted" {
   if (cat === "Needs Reply") return "warn";
   if (cat === "Needs Decision") return "accent";
   return "muted";
 }
 
+// Short relative age, e.g. "4h", "2d", from an ISO timestamp.
+function ago(iso: string | null): string {
+  if (!iso) return "";
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "";
+  const mins = Math.max(0, Math.round((Date.now() - then) / 60000));
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  return `${Math.round(hrs / 24)}d`;
+}
+
 export function InboxScreen() {
   const { openSheet, showToast } = useShell();
+  const [messages, setMessages] = useState<InboxMessage[]>([]);
+  const [filteredCount, setFilteredCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [cat, setCat] = useState<string>("all");
   const [open, setOpen] = useState<string | null>(null);
   const [archived, setArchived] = useState<Set<string>>(new Set());
 
+  const load = useCallback(async () => {
+    try {
+      setError(null);
+      const view = await api.getInbox();
+      setMessages(view.messages);
+      setFilteredCount(view.filtered_count);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't load your inbox");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
   const live = useMemo(
-    () => INBOX.filter((m) => !archived.has(m.id)),
-    [archived],
+    () => messages.filter((m) => !archived.has(m.id)),
+    [messages, archived],
   );
-  const filtered = useMemo(() => {
+  const shown = useMemo(() => {
     const c = CATS.find((x) => x.id === cat);
     if (!c || c.match === null) return live;
-    return live.filter((m) => m.cat === c.match);
+    return live.filter((m) => m.category === c.match);
   }, [live, cat]);
 
   const counts = useMemo(() => {
@@ -81,7 +117,7 @@ export function InboxScreen() {
       acc[c.id] =
         c.match === null
           ? live.length
-          : live.filter((m) => m.cat === c.match).length;
+          : live.filter((m) => m.category === c.match).length;
     }
     return acc;
   }, [live]);
@@ -92,6 +128,21 @@ export function InboxScreen() {
     showToast(msg);
   };
 
+  const replyCount = counts["reply"] ?? 0;
+  const decideCount = counts["decide"] ?? 0;
+  const briefing =
+    `${replyCount} need${replyCount === 1 ? "s" : ""} a reply. ` +
+    `${decideCount} ${decideCount === 1 ? "is a decision" : "are decisions"} to make. ` +
+    `I filtered ${filteredCount} newsletter${filteredCount === 1 ? "" : "s"}.`;
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator color={colors.accent} />
+      </View>
+    );
+  }
+
   return (
     <ScrollView
       style={styles.screen}
@@ -99,7 +150,7 @@ export function InboxScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>
-        <Eyebrow>Priority Inbox · Gmail synced 4m ago</Eyebrow>
+        <Eyebrow>Priority Inbox</Eyebrow>
         <Serif size={32} style={styles.title}>
           What <SerifEm>matters</SerifEm>.
         </Serif>
@@ -124,16 +175,19 @@ export function InboxScreen() {
         ))}
       </ScrollView>
 
-      {/* Briefing banner */}
-      <View style={styles.banner}>
-        <AlfMark size={18} filled color={colors.accent} />
-        <Serif size={16} color={colors.ink2} style={styles.bannerText}>
-          {INBOX_BRIEFING}
-        </Serif>
-      </View>
+      {/* Briefing banner (only meaningful with messages) */}
+      {live.length || filteredCount ? (
+        <View style={styles.banner}>
+          <AlfMark size={18} filled color={colors.accent} />
+          <Serif size={16} color={colors.ink2} style={styles.bannerText}>
+            {briefing}
+          </Serif>
+        </View>
+      ) : null}
 
-      {/* Messages */}
-      {filtered.map((m) => (
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      {shown.map((m) => (
         <MessageCard
           key={m.id}
           msg={m}
@@ -143,18 +197,29 @@ export function InboxScreen() {
             setOpen(open === m.id ? null : m.id);
           }}
           onDraft={() =>
-            openSheet(<ApprovalSheet onDone={() => showToast("Sent.")} />)
+            openSheet(
+              <ApprovalSheet
+                recipient={m.sender}
+                subject={m.subject ? `Re: ${m.subject}` : "Re:"}
+                onDone={() => showToast("Sent.")}
+              />,
+            )
           }
           onArchive={() => archive(m.id)}
           onSnooze={() => archive(m.id, "Snoozed.")}
         />
       ))}
-      {filtered.length === 0 ? (
+
+      {shown.length === 0 ? (
         <View style={styles.zero}>
           <Serif size={18} italic color={colors.ink3}>
-            Inbox zero, in this category.
+            {live.length ? "Inbox zero, in this category." : "Inbox zero."}
           </Serif>
-          <Meta>Quite the feeling, isn't it.</Meta>
+          <Meta>
+            {live.length
+              ? "Quite the feeling, isn't it."
+              : "Nothing synced yet — pull from Today to sync."}
+          </Meta>
         </View>
       ) : null}
 
@@ -181,41 +246,37 @@ function MessageCard({
   return (
     <View style={styles.msgCard}>
       <Pressable style={styles.msgHead} onPress={onToggle}>
-        <Avatar name={msg.from} size={36} />
+        <Avatar name={msg.sender} size={36} />
         <View style={styles.msgBody}>
           <View style={styles.msgTopRow}>
             <Text style={styles.msgFrom} numberOfLines={1}>
-              {msg.from}
+              {msg.sender}
             </Text>
-            <Meta>{msg.received}</Meta>
+            <Meta>{ago(msg.sent_at)}</Meta>
           </View>
-          <Text style={styles.msgSubject}>{msg.subject}</Text>
+          {msg.subject ? (
+            <Text style={styles.msgSubject}>{msg.subject}</Text>
+          ) : null}
           <View style={styles.msgMetaRow}>
-            <Pill label={msg.cat} kind={catPill(msg.cat)} />
-            {msg.deadline !== "—" ? <Meta>· {msg.deadline}</Meta> : null}
+            <Pill label={msg.category} kind={catPill(msg.category)} />
           </View>
 
           {expanded ? (
             <View style={styles.expanded}>
-              <View style={styles.take}>
-                <View style={styles.takeHead}>
-                  <AlfMark size={12} color={colors.accent} />
-                  <Text style={styles.takeLabel}>
-                    Alfred's take · {Math.round(msg.confidence * 100)}%
-                    confident
-                  </Text>
+              {msg.take ? (
+                <View style={styles.take}>
+                  <View style={styles.takeHead}>
+                    <AlfMark size={12} color={colors.accent} />
+                    <Text style={styles.takeLabel}>Albert's take</Text>
+                  </View>
+                  <Text style={styles.takeText}>{msg.take}</Text>
                 </View>
-                <Text style={styles.takeText}>{msg.summary}</Text>
-                <Text style={styles.takeAction}>
-                  <Text style={styles.takeActionLabel}>
-                    Suggested action —{" "}
-                  </Text>
-                  {msg.action}
-                </Text>
-              </View>
-              <Text style={styles.preview}>{msg.preview}</Text>
+              ) : null}
+              {msg.snippet ? (
+                <Text style={styles.preview}>{msg.snippet}</Text>
+              ) : null}
               <View style={styles.msgActions}>
-                {msg.cat === "Needs Reply" ? (
+                {msg.category === "Needs Reply" ? (
                   <Btn
                     label="Draft reply"
                     kind="accent"
@@ -223,7 +284,7 @@ function MessageCard({
                     onPress={onDraft}
                   />
                 ) : null}
-                {msg.cat === "Needs Decision" ? (
+                {msg.category === "Needs Decision" ? (
                   <>
                     <Btn label="Yes" kind="accent" tiny onPress={onArchive} />
                     <Btn label="No" kind="ghost" tiny onPress={onArchive} />
@@ -247,6 +308,12 @@ const styles = StyleSheet.create({
     paddingTop: layout.topPad,
     paddingBottom: spacing.xl,
   },
+  centered: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.paper,
+  },
   header: { gap: 6, paddingBottom: 6 },
   title: { marginTop: 2 },
 
@@ -268,6 +335,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   bannerText: { flex: 1, lineHeight: 22 },
+  error: { color: colors.warn, fontSize: 13, marginBottom: 12 },
 
   msgCard: {
     backgroundColor: colors.card,
@@ -330,17 +398,6 @@ const styles = StyleSheet.create({
     color: colors.ink4,
   },
   takeText: { fontSize: 13.5, lineHeight: 19, color: colors.ink },
-  takeAction: {
-    fontSize: 12.5,
-    color: colors.ink2,
-    marginTop: 8,
-    fontStyle: "italic",
-  },
-  takeActionLabel: {
-    fontStyle: "normal",
-    fontWeight: "500",
-    color: colors.ink3,
-  },
   preview: {
     fontSize: 13,
     color: colors.ink3,

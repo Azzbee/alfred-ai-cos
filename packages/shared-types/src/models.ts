@@ -158,6 +158,24 @@ export interface CommitmentDraft {
   evidence: string | null;
 }
 
+// One real inbox message. `category` is one of the four UI buckets; `take` is
+// Albert's one-line read of the message.
+export interface InboxMessage {
+  id: string;
+  sender: string;
+  subject: string | null;
+  snippet: string | null;
+  take: string | null;
+  category: "Needs Reply" | "Needs Decision" | "Waiting" | "FYI";
+  sent_at: string | null; // ISO
+  action_required: boolean;
+}
+
+export interface InboxView {
+  messages: InboxMessage[];
+  filtered_count: number;
+}
+
 export interface DraftCreateRequest {
   message_id: string;
   tone?: string;

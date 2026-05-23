@@ -13,6 +13,7 @@ import type {
   CommitmentStatus,
   Draft,
   DraftCreateRequest,
+  InboxView,
   Me,
   MeetingPrep,
   OnboardingPrefs,
@@ -70,6 +71,7 @@ export const api = {
     ),
   sync: () => request<SyncResponse>("/sync", { method: "POST" }),
   getToday: () => request<TodayDashboard>("/today"),
+  getInbox: () => request<InboxView>("/messages"),
   listCommitments: () => request<Commitment[]>("/commitments"),
   updateCommitmentStatus: (id: string, status: CommitmentStatus) =>
     request<Commitment>(`/commitments/${id}/status?status=${status}`, {
