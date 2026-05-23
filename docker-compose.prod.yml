@@ -1,0 +1,98 @@
+# Albert production stack for the shared Hetzner VPS (alongside Alfred + Paperclip).
+#
+# Isolation: own network (albert_net), own volume (albert_pgdata), all containers
+# albert_*-prefixed, so `docker compose -p albert ... down` never touches other projects.
+# TLS is NOT handled here — the existing host Caddy reverse-proxies
+# https://albert.alfredassistants.com -> 127.0.0.1:${ALBERT_WEB_PORT} (default 8011).
+#
+# Deploy:
+#   export ALBERT_TAG=$(git rev-parse --short HEAD)   # never :latest, so rollback = retag
+#   docker compose -p albert -f docker-compose.prod.yml up -d --build
+# Env: reads /opt/albert/.env on the server (ENVIRONMENT=production, real secrets).
+
+x-backend: &backend
+  image: albert-backend:${ALBERT_TAG:-dev}
+  build:
+    context: ./backend
+  env_file: [.env]
+  restart: unless-stopped
+  depends_on:
+    albert_postgres:
+      condition: service_healthy
+    albert_redis:
+      condition: service_healthy
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "5" }
+
+services:
+  albert_postgres:
+    image: pgvector/pgvector:pg16
+    container_name: albert_postgres
+    env_file: [.env]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-albert}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-albert}
+    volumes:
+      - albert_pgdata:/var/lib/postgresql/data
+    networks: [albert_net]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-albert}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  albert_redis:
+    image: redis:7-alpine
+    container_name: albert_redis
+    networks: [albert_net]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  albert_web:
+    <<: *backend
+    container_name: albert_web
+    # Bind to loopback only — Caddy on the host proxies to it; never expose to the world.
+    ports:
+      - "127.0.0.1:${ALBERT_WEB_PORT:-8011}:8000"
+    networks: [albert_net]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/docs"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  albert_worker:
+    <<: *backend
+    container_name: albert_worker
+    command:
+      ["celery", "-A", "app.workers.celery_app", "worker", "--loglevel=info"]
+    networks: [albert_net]
+
+  albert_beat:
+    <<: *backend
+    container_name: albert_beat
+    command:
+      ["celery", "-A", "app.workers.celery_app", "beat", "--loglevel=info"]
+    networks: [albert_net]
+
+networks:
+  albert_net:
+    name: albert_net
+
+volumes:
+  albert_pgdata:
+    name: albert_pgdata
