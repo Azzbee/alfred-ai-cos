@@ -11,15 +11,22 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/PROJECT_ID_PLACEHOLDER",
+      "url": "https://u.expo.dev/45e050ed-fd8c-494a-8173-821548b192f5",
       "fallbackToCacheTimeout": 0
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.albert.app"
+      "bundleIdentifier": "com.alfredassistants.albert",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
-      "package": "com.albert.app"
+      "package": "com.alfredassistants.albert",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -31,7 +38,12 @@
       "expo-updates"
     ],
     "extra": {
-      "apiBaseUrl": "https://albert.alfredassistants.com"
-    }
+      "apiBaseUrl": "https://albert.alfredassistants.com",
+      "router": {},
+      "eas": {
+        "projectId": "45e050ed-fd8c-494a-8173-821548b192f5"
+      }
+    },
+    "owner": "slurpdurp"
   }
 }
