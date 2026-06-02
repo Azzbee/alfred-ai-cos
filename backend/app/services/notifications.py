@@ -5,7 +5,7 @@ through a NotificationProvider so the transport (Expo Push now) is swappable."""
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime, time
+from datetime import UTC, datetime, time, timedelta
 from datetime import date as date_type
 from typing import Any, Protocol
 
@@ -13,13 +13,57 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.enums import (
+    ActionStatus,
     CommitmentOwner,
     CommitmentStatus,
     NotificationImportance,
     NotificationStatus,
     NotificationType,
 )
-from app.db.models import Commitment, Device, Notification, User
+from app.db.models import ActionProposal, Commitment, Device, Notification, User
+
+# A proposal must sit pending for at least this long before we push for it. Filters out
+# the synchronous propose-then-approve flows (Ask screen booking, Today Act send) where
+# the user is already looking and a push would be noise.
+PENDING_APPROVAL_GRACE = timedelta(minutes=2)
+
+
+def scan_pending_approvals(db: Session, user_id: str, *, now: datetime) -> int:
+    """Enqueue an approval_needed notification for proposals that have been waiting on
+    the user beyond the grace window. Deduped per proposal id so a re-scan does not
+    re-notify. Returns the count enqueued.
+
+    The grace window (PENDING_APPROVAL_GRACE) skips the synchronous propose-then-approve
+    flows (Ask screen booking, Today Act send) where the user is right there and a push
+    would be noise."""
+    cutoff = now - PENDING_APPROVAL_GRACE
+    waiting = list(
+        db.scalars(
+            select(ActionProposal).where(
+                ActionProposal.user_id == user_id,
+                ActionProposal.status == ActionStatus.proposed,
+                ActionProposal.approval_required.is_(True),
+                ActionProposal.created_at <= cutoff,
+            )
+        )
+    )
+    enqueued = 0
+    for p in waiting:
+        title = "Albert wants your approval"
+        body = (p.reason or "").strip() or f"Approve a {p.action_type.value.replace('_', ' ')}."
+        created = enqueue(
+            db,
+            user_id,
+            ntype=NotificationType.approval_needed,
+            title=title,
+            body=body[:160],
+            payload={"action_id": p.id, "deep_link": "/approvals"},
+            dedup_key=f"approval:{p.id}",
+        )
+        if created is not None:
+            enqueued += 1
+    return enqueued
+
 
 # Importance of each notification type. Below the user's threshold => batched.
 _IMPORTANCE: dict[NotificationType, NotificationImportance] = {

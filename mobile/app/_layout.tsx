@@ -4,8 +4,9 @@
 // flash of system type.
 
 import { useEffect } from "react";
-import { Slot } from "expo-router";
+import { Slot, router } from "expo-router";
 import * as Linking from "expo-linking";
+import * as Notifications from "expo-notifications";
 import * as SplashScreen from "expo-splash-screen";
 import {
   useFonts,
@@ -46,6 +47,24 @@ function DeepLinkHandler() {
     const sub = Linking.addEventListener("url", (e) => void handle(e.url));
     return () => sub.remove();
   }, [refresh]);
+
+  // Route push taps to the embedded deep_link (e.g. "/approvals"). Set on both the
+  // foreground/background tap stream and the cold-start response.
+  useEffect(() => {
+    const go = (data: unknown) => {
+      const link = (data as { deep_link?: unknown })?.deep_link;
+      if (typeof link === "string" && link.startsWith("/")) {
+        router.push(link as never);
+      }
+    };
+    void Notifications.getLastNotificationResponseAsync().then((r) => {
+      if (r) go(r.notification.request.content.data);
+    });
+    const sub = Notifications.addNotificationResponseReceivedListener((r) =>
+      go(r.notification.request.content.data),
+    );
+    return () => sub.remove();
+  }, []);
 
   return <Slot />;
 }

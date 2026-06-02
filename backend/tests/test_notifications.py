@@ -1,20 +1,38 @@
 """Notification decision logic + scan/dedup tests. Logic functions are pure;
 scan/enqueue run against SQLite."""
 
-from datetime import date, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 
 import pytest
 from sqlalchemy.orm import Session
 
 from app.db.enums import (
+    ActionStatus,
+    ActionType,
     CommitmentOwner,
     CommitmentStatus,
     NotificationImportance,
     NotificationType,
     SourceType,
 )
-from app.db.models import Commitment, Notification, User
+from app.db.models import ActionProposal, Commitment, Notification, User
 from app.services import notifications as n
+
+
+def _proposal(
+    user_id: str, *, created_at: datetime, approval_required: bool = True
+) -> ActionProposal:
+    return ActionProposal(
+        user_id=user_id,
+        action_type=ActionType.send_email,
+        risk_level=3,
+        target={"draft_reply_id": "x"},
+        reason="Send a reply",
+        approval_required=approval_required,
+        status=ActionStatus.proposed,
+        created_at=created_at,
+    )
+
 
 # --- pure logic: quiet hours ---
 
@@ -181,3 +199,43 @@ def test_dispatch_sends_high_and_holds_low(db: Session, user: User) -> None:
     assert result == {"sent": 1, "held": 1}
     assert len(notifier.sent) == 1
     assert notifier.sent[0]["title"] == "urgent"
+
+
+# --- approval push: only fires once the grace window has passed ---
+
+
+def test_pending_approval_within_grace_does_not_push(db: Session, user: User) -> None:
+    now = datetime(2026, 6, 2, 12, 0, tzinfo=UTC)
+    # 30s old: well inside the 2-min grace window — the user just hit Send, no push.
+    db.add(_proposal(user.id, created_at=now - timedelta(seconds=30)))
+    db.commit()
+    assert n.scan_pending_approvals(db, user.id, now=now) == 0
+    assert db.query(Notification).count() == 0
+
+
+def test_pending_approval_past_grace_enqueues(db: Session, user: User) -> None:
+    now = datetime(2026, 6, 2, 12, 0, tzinfo=UTC)
+    db.add(_proposal(user.id, created_at=now - timedelta(minutes=5)))
+    db.commit()
+    assert n.scan_pending_approvals(db, user.id, now=now) == 1
+    notif = db.query(Notification).one()
+    assert notif.type == NotificationType.approval_needed
+    assert notif.payload["deep_link"] == "/approvals"
+    assert notif.payload["action_id"]
+
+
+def test_pending_approval_is_deduped(db: Session, user: User) -> None:
+    now = datetime(2026, 6, 2, 12, 0, tzinfo=UTC)
+    db.add(_proposal(user.id, created_at=now - timedelta(minutes=5)))
+    db.commit()
+    n.scan_pending_approvals(db, user.id, now=now)
+    n.scan_pending_approvals(db, user.id, now=now + timedelta(minutes=30))
+    assert db.query(Notification).count() == 1
+
+
+def test_pending_approval_skipped_when_not_required(db: Session, user: User) -> None:
+    # Auto-approved proposals (level 1-2 with no approval requirement) never push.
+    now = datetime(2026, 6, 2, 12, 0, tzinfo=UTC)
+    db.add(_proposal(user.id, created_at=now - timedelta(minutes=10), approval_required=False))
+    db.commit()
+    assert n.scan_pending_approvals(db, user.id, now=now) == 0

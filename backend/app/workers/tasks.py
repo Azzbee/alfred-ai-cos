@@ -65,10 +65,12 @@ def scan_notifications() -> dict[str, int]:
     enqueued = sent = held = 0
     try:
         users = list(db.scalars(select(User)))
-        now_t = datetime.now(UTC).time()
-        today = datetime.now(UTC).date()
+        now_dt = datetime.now(UTC)
+        now_t = now_dt.time()
+        today = now_dt.date()
         for user in users:
             enqueued += notifications.scan_for_risks(db, user.id, today=today)
+            enqueued += notifications.scan_pending_approvals(db, user.id, now=now_dt)
             result = notifications.dispatch_pending(db, user, now=now_t, provider=notifier)
             sent += result["sent"]
             held += result["held"]
