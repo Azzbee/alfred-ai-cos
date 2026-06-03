@@ -16,6 +16,8 @@ import {
 } from "react-native";
 
 import { api } from "@/api/client";
+import { CompanionAvatar } from "@/components/CompanionAvatar";
+import { useCompanionAvatar } from "@/context/CompanionAvatarContext";
 import { CHAT_SEED, SUGGESTED_QUESTIONS, type ChatMessage } from "@/data/demo";
 import { Ic, AlfMark } from "@/components/icons";
 import { useShell } from "@/components/Shell";
@@ -24,10 +26,20 @@ import { colors, fonts, layout } from "@/theme/theme";
 
 export function AskScreen() {
   const { showToast } = useShell();
+  const { meta, state, setThinking, recordEvent } = useCompanionAvatar();
   const [chat, setChat] = useState<ChatMessage[]>(CHAT_SEED);
   const [input, setInput] = useState("");
-  const [thinking, setThinking] = useState(false);
+  const [thinking, setThinkingLocal] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+
+  // Mirror local thinking flag into companion context so the avatar animates + mood updates.
+  const setThinkingBoth = useCallback(
+    (v: boolean) => {
+      setThinkingLocal(v);
+      setThinking(v);
+    },
+    [setThinking],
+  );
 
   const send = useCallback(
     async (text: string) => {
@@ -35,12 +47,14 @@ export function AskScreen() {
       if (!q || thinking) return;
       setChat((c) => [...c, { role: "user", text: q, ts: "now" }]);
       setInput("");
-      setThinking(true);
+      setThinkingBoth(true);
       scrollRef.current?.scrollToEnd({ animated: true });
       try {
         const res = await api.ask(q);
         setChat((c) => [...c, { role: "alfred", text: res.reply, ts: "now" }]);
         if (res.action === "booked") showToast("Added to your calendar.");
+        // Grant companion XP for each assistant message (capped daily in agentMeta).
+        void recordEvent("agent_message_sent");
       } catch (e) {
         setChat((c) => [
           ...c,
@@ -54,11 +68,11 @@ export function AskScreen() {
           },
         ]);
       } finally {
-        setThinking(false);
+        setThinkingBoth(false);
         scrollRef.current?.scrollToEnd({ animated: true });
       }
     },
-    [thinking, showToast],
+    [thinking, showToast, setThinkingBoth, recordEvent],
   );
 
   return (
@@ -113,6 +127,17 @@ export function AskScreen() {
           </View>
         ) : null}
       </ScrollView>
+
+      {/* Companion avatar dock — bottom-right above composer while chatting with Alfred. */}
+      <View style={styles.companionDock} pointerEvents="box-none">
+        <CompanionAvatar
+          size={48}
+          level={meta.level}
+          color={meta.color}
+          state={state}
+          compact
+        />
+      </View>
 
       <View style={styles.composer}>
         <View style={styles.composerInner}>
@@ -215,6 +240,14 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   userText: { color: colors.paper, fontSize: 14.5, lineHeight: 21 },
+
+  // Floating companion — matches prototype annotation (bottom-right of chat area).
+  companionDock: {
+    position: "absolute",
+    right: layout.padX,
+    bottom: 72,
+    zIndex: 2,
+  },
 
   composer: {
     paddingHorizontal: layout.padX,

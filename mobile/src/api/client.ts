@@ -2,6 +2,7 @@
 // and attaches the session token from secure storage.
 
 import Constants from "expo-constants";
+import { Platform } from "react-native";
 import type {
   ActionProposal,
   AppNotification,
@@ -31,9 +32,25 @@ import type {
 
 import { clearToken, getToken } from "./auth";
 
-const BASE_URL: string =
-  (Constants.expoConfig?.extra?.apiBaseUrl as string) ??
-  "http://localhost:8000";
+/**
+ * API base URL resolution:
+ *   • Native (Expo Go / device): production URL from app.json extra.apiBaseUrl
+ *   • Web dev: localhost:8000 — requests go through scripts/dev-api-proxy.mjs
+ *     which adds CORS headers and forwards to production (browser blocks direct
+ *     cross-origin calls to albert.alfredassistants.com).
+ *   • Fallback: localhost:8000 for local backend development.
+ */
+function resolveBaseUrl(): string {
+  if (Platform.OS === "web" && __DEV__) {
+    return "http://localhost:8000";
+  }
+  return (
+    (Constants.expoConfig?.extra?.apiBaseUrl as string | undefined) ??
+    "http://localhost:8000"
+  );
+}
+
+const BASE_URL = resolveBaseUrl();
 
 // The device's IANA timezone (e.g. "Europe/Paris"), via Hermes' Intl. Falls back to
 // UTC if unavailable. Sent with assistant requests so booked times match the user's clock.

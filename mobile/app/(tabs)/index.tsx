@@ -4,13 +4,23 @@
 // (react-native-screens) throws on render. So we render the active screen via local
 // state and draw the prototype's custom bottom bar: Today · Inbox · (center Capture +)
 // · Ask · You. Capture pushes the full-screen /capture route over the tabs.
+//
+// Alfred's companion avatar "lives" on the center + button when the user is on Inbox
+// or You. On Today it floats top-right; on Ask it floats bottom-right (see those screens).
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
+import {
+  CompanionAvatarHome,
+} from "@/components/CompanionAvatar";
 import { Ic } from "@/components/icons";
 import { ShellProvider } from "@/components/Shell";
+import {
+  CompanionAvatarProvider,
+  useCompanionAvatar,
+} from "@/context/CompanionAvatarContext";
 import { AskScreen } from "@/screens/AskScreen";
 import { InboxScreen } from "@/screens/InboxScreen";
 import { SettingsScreen } from "@/screens/SettingsScreen";
@@ -20,8 +30,26 @@ import { colors, fonts, layout } from "@/theme/theme";
 type TabKey = "today" | "inbox" | "ask" | "settings";
 
 export default function TabsHome() {
+  return (
+    <CompanionAvatarProvider>
+      <TabsHomeInner />
+    </CompanionAvatarProvider>
+  );
+}
+
+function TabsHomeInner() {
   const router = useRouter();
   const [tab, setTab] = useState<TabKey>("today");
+  const { meta, state, setPlacement } = useCompanionAvatar();
+
+  // Sync avatar placement with the active tab — center + is "home" for Inbox / You.
+  useEffect(() => {
+    if (tab === "today") setPlacement("today");
+    else if (tab === "ask") setPlacement("ask");
+    else setPlacement("home");
+  }, [tab, setPlacement]);
+
+  const atHome = tab === "inbox" || tab === "settings";
 
   return (
     <ShellProvider>
@@ -46,12 +74,22 @@ export default function TabsHome() {
             onPress={() => setTab("inbox")}
             icon={(c) => <Ic.Inbox size={22} color={c} stroke={1.5} />}
           />
+          {/* Center capture: when avatar is "home", show the orb; else show + for capture. */}
           <Pressable
             style={styles.capture}
             onPress={() => router.push("/capture")}
-            accessibilityLabel="Capture"
+            accessibilityLabel={atHome ? "Alfred companion home — open capture" : "Capture"}
           >
-            <Ic.Plus size={22} color={colors.paper} stroke={2} />
+            {atHome ? (
+              <CompanionAvatarHome
+                size={30}
+                level={meta.level}
+                color={meta.color}
+                state={state}
+              />
+            ) : (
+              <Ic.Plus size={22} color={colors.paper} stroke={2} />
+            )}
           </Pressable>
           <Tab
             label="Ask"

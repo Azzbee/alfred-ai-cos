@@ -24,6 +24,8 @@ import {
 } from "@albert/shared-types";
 
 import { api } from "@/api/client";
+import { CompanionAvatar } from "@/components/CompanionAvatar";
+import { useCompanionAvatar } from "@/context/CompanionAvatarContext";
 import { Ic } from "@/components/icons";
 import { PriorityCard } from "@/components/PriorityCard";
 import { useShell } from "@/components/Shell";
@@ -57,6 +59,7 @@ function todayLine(): string {
 export function TodayScreen() {
   const router = useRouter();
   const { openSheet, showToast } = useShell();
+  const { meta, state } = useCompanionAvatar();
   const [me, setMe] = useState<Me | null>(null);
   const [data, setData] = useState<TodayDashboard | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -209,21 +212,31 @@ export function TodayScreen() {
         />
       }
     >
-      {/* Header */}
+      {/* Header — greeting left, companion avatar top-right with "Hi!" bubble */}
       <View style={styles.header}>
-        <Eyebrow>{todayLine()}</Eyebrow>
-        <Serif size={36} style={styles.greeting}>
-          {greetingFor(new Date().getHours())}{" "}
-          {firstName ? (
-            <SerifEm>{firstName}</SerifEm>
-          ) : (
-            <SerifEm>there</SerifEm>
-          )}
-          .
-        </Serif>
-        {data?.summary ? (
-          <Text style={styles.subtitle}>{data.summary}</Text>
-        ) : null}
+        <View style={styles.headerMain}>
+          <Eyebrow>{todayLine()}</Eyebrow>
+          <Serif size={36} style={styles.greeting}>
+            {greetingFor(new Date().getHours())}{" "}
+            {firstName ? (
+              <SerifEm>{firstName}</SerifEm>
+            ) : (
+              <SerifEm>there</SerifEm>
+            )}
+            .
+          </Serif>
+          {data?.summary ? (
+            <Text style={styles.subtitle}>{data.summary}</Text>
+          ) : null}
+        </View>
+        <CompanionAvatar
+          size={52}
+          level={meta.level}
+          color={meta.color}
+          state={state}
+          speech="Hi!"
+          style={styles.headerAvatar}
+        />
       </View>
 
       {/* Count strip */}
@@ -418,7 +431,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: colors.paper,
   },
-  header: { gap: 10, paddingBottom: 14 },
+  header: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 8,
+    paddingBottom: 14,
+  },
+  headerMain: { flex: 1, minWidth: 0, gap: 10 },
+  headerAvatar: { marginTop: 2, marginRight: -2 },
   greeting: { marginTop: 2 },
   subtitle: { fontSize: 15, lineHeight: 22, color: colors.ink3, maxWidth: 320 },
   error: { color: colors.warn, fontSize: 13, marginTop: spacing.sm },
