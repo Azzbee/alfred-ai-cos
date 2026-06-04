@@ -215,6 +215,20 @@ _AUTOMATED_LOCAL_SUFFIXES = (
 _BULK_DOMAIN_PATTERNS = (
     "mailchimp",
     "mailchimpapp",
+    "facebookmail.com",  # Facebook's mailer; legitimate per brand-domain list
+    "instagrammail.com",
+    "medallia.com",  # feedback / survey blasts
+    "qualtrics.com",
+    "surveymonkey.com",
+    "typeform.com",
+    "mailerlite",
+    "mlbemail.com",  # MLB sports marketing
+    "yotpo",
+    "iterable",
+    "braze.com",
+    "marketo",
+    "pardot.com",
+    "eloqua.com",
     "mailgun",
     "mandrillapp",
     "sendgrid",
@@ -269,8 +283,33 @@ _TRANSACTIONAL_SUBDOMAINS = (
     "n.",
     "p.",
     "t.",
+    # Letter prefixes used by ESPs as throwaway subdomains:
+    # b.express.com, s.shopify.com, h.brand.com.
+    "a.",
+    "b.",
+    "c.",
+    "d.",
+    "f.",
+    "g.",
+    "h.",
+    "k.",
+    "l.",
+    "m.",
+    "o.",
+    "r.",
+    "s.",
+    "u.",
+    "v.",
+    "w.",
+    "x.",
+    "y.",
+    "z.",
+    # Two-letter brand-mailing prefixes
+    "hi.",
+    "go.",
     # Word prefixes
     "email.",
+    "emails.",
     "enews.",
     "news.",
     "newsletter.",
@@ -280,7 +319,10 @@ _TRANSACTIONAL_SUBDOMAINS = (
     "offers.",
     "info.",
     "mail.",
+    "mailing.",
+    "mailings.",
     "send.",
+    "sender.",
     "delivery.",
     "deliver.",
     "smtp.",
@@ -525,6 +567,23 @@ _URGENCY_SPAM_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Out-of-office / auto-reply subjects. These should classify as automated
+# regardless of who sent them — auto-replies are by definition not a real
+# human writing personally. Covers English + French + Spanish + German.
+_AUTO_REPLY_SUBJECT_RE = re.compile(
+    r"^\s*("
+    r"out of (the )?office|"
+    r"automatic(ally)? (reply|response|generated)|"
+    r"auto[- ]?(reply|response|generated|antwort|reply:)|"
+    r"r[ée]ponse automatique|"
+    r"respuesta automática|"
+    r"abwesenheits(notiz|nachricht)|"
+    r"away from"
+    r")",
+    re.IGNORECASE,
+)
+
+
 _NEWSLETTER_SUBJECT_RE = re.compile(
     # Matches several common newsletter / digest subject shapes:
     #   [Anything Newsletter] Whatever
@@ -694,7 +753,13 @@ def classify(
         reasons.append(f"sent from transactional / marketing subdomain ({dom})")
         return Classification(cls="automated", reasons=reasons)
 
-    # 7) Newsletter / digest subjects from any sender → automated.
+    # 7a) Auto-reply / out-of-office → automated. A real human's name might
+    # appear in the From, but the message IS automated by definition.
+    if subject and _AUTO_REPLY_SUBJECT_RE.search(subject):
+        reasons.append("auto-reply / out-of-office subject")
+        return Classification(cls="automated", reasons=reasons)
+
+    # 7b) Newsletter / digest subjects from any sender → automated.
     if subject and _NEWSLETTER_SUBJECT_RE.search(subject):
         reasons.append("subject reads as a newsletter / digest")
         return Classification(cls="automated", reasons=reasons)

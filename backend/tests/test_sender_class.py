@@ -472,6 +472,106 @@ def test_screaming_subject_from_personal_address_is_still_suspicious() -> None:
     assert out.cls == "suspicious"
 
 
+# --- v3 fixtures: leaks found in the second prod audit ---
+
+
+def test_facebookmail_pageupdates_is_automated() -> None:
+    """facebookmail.com is on the bulk-domain list (legitimate Facebook mailer)
+    so even content-style local parts like pageupdates classify as automated."""
+    out = sc.classify(
+        sender="Facebook Pages <pageupdates@facebookmail.com>",
+        subject="Honor of Kings recently shared a post",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_cinemark_emails_plural_subdomain_is_automated() -> None:
+    """emails.cinemark.com (plural) was missed. Now caught."""
+    out = sc.classify(
+        sender="Cinemark <emails@emails.cinemark.com>",
+        subject="See what's New & Now at Cinemark",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_b_subdomain_is_automated() -> None:
+    """b.express.com — single-letter ESP throwaway subdomain."""
+    out = sc.classify(
+        sender="Express <express@b.express.com>",
+        subject="Sale is ending! 30% off",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_medallia_feedback_is_automated() -> None:
+    """medallia.com is a survey platform — pure bulk mail."""
+    out = sc.classify(
+        sender="Lexus <Lexus@express.sea1.medallia.com>",
+        subject="Tell us about your experience",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_mlb_email_domain_is_automated() -> None:
+    """mlbemail.com is on the bulk domain list."""
+    out = sc.classify(
+        sender="Red Sox <redsox@marketing.mlbemail.com>",
+        subject="The Grand Slam Giveaway is LIVE!",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_french_auto_reply_is_automated() -> None:
+    """L'Oréal auto-reply in French: 'Réponse automatique : ...'."""
+    out = sc.classify(
+        sender="AZOUNI Wissal <Wissal.AZOUNI@loreal.com>",
+        subject="Réponse automatique : Adam, Bienvenue chez L'Oréal",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_english_auto_reply_is_automated() -> None:
+    out = sc.classify(
+        sender="Mary Smith <mary@buyer.co>",
+        subject="Out of office: back Monday",
+        snippet="I'm out until Monday.",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_german_auto_reply_is_automated() -> None:
+    out = sc.classify(
+        sender="Hans <hans@de.co>",
+        subject="Abwesenheitsnotiz: nicht im Büro",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_spanish_auto_reply_is_automated() -> None:
+    out = sc.classify(
+        sender="Maria <maria@es.co>",
+        subject="Respuesta automática: estoy fuera",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
 # --- user overrides ---
 
 
