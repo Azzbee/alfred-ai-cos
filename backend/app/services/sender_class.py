@@ -130,8 +130,10 @@ _ROLE_LOCAL_PARTS = {
 _AUTOMATED_LOCAL_PARTS = {
     "noreply",
     "no-reply",
+    "no_reply",
     "donotreply",
     "do-not-reply",
+    "do_not_reply",
     "notifications",
     "notification",
     "alerts",
@@ -167,6 +169,14 @@ _AUTOMATED_LOCAL_PARTS = {
     "billing-noreply",
     "invitations",
     "invites",
+    "service",  # service@paypal.com pattern
+    "keep-in-touch",  # McKinsey-style staying-in-touch blasts
+    "stayintouch",
+    "stay-in-touch",
+    "members",
+    "ebay",  # brand-name local part on its own domain is always automated
+    "service-client",
+    "service.client",
 }
 
 # Local parts that have a digit suffix typical of mail-blast platforms:
@@ -183,6 +193,19 @@ _AUTOMATED_LOCAL_PREFIXES = (
     "mail-",
     "list-",
     "store-",  # store-news@amazon.com
+    "info-",  # info-courtyards@..., info-team@...
+    "support-",
+    "team-",
+    "noreply-",
+    "no-reply-",
+    "alerts-",
+    "alert-",
+    "notify-",
+    "marketing-",
+    "newsletter-",
+    "members-",
+    "auto-",
+    "system-",
 )
 
 # Suffix patterns: a local part ending in any of these is automated even if
@@ -229,6 +252,12 @@ _BULK_DOMAIN_PATTERNS = (
     "marketo",
     "pardot.com",
     "eloqua.com",
+    "campusespmail.com",  # student/family portal blasts
+    "members.ebay.com",  # eBay member-to-member relay
+    "reply.ebay.com",
+    "mailaclou.com",
+    "loophole-letters",
+    ".sailthru.com",
     "mailgun",
     "mandrillapp",
     "sendgrid",
@@ -727,9 +756,10 @@ def classify(
 
     # 5) automated local part or platform domain.
     local = email.split("@", 1)[0] if "@" in email else ""
-    # Normalize dots → dashes so suffix patterns catch dot-separated locals
-    # like no.reply.alerts@chase.com (→ no-reply-alerts, ends in -alerts).
-    local_norm = local.replace(".", "-")
+    # Normalize dots AND underscores to dashes so suffix patterns catch
+    # variants like no.reply.alerts@chase.com (→ no-reply-alerts) and
+    # no_reply@mcmap.chase.com (→ no-reply).
+    local_norm = local.replace(".", "-").replace("_", "-")
     if (
         local in _AUTOMATED_LOCAL_PARTS
         or local_norm in _AUTOMATED_LOCAL_PARTS

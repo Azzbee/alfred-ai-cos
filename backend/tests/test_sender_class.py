@@ -572,6 +572,93 @@ def test_spanish_auto_reply_is_automated() -> None:
     assert out.cls == "automated"
 
 
+# --- v4 fixtures: remaining leaks after v3 audit ---
+
+
+def test_service_local_part_is_automated() -> None:
+    """service@paypal.com is a transactional address, not a person."""
+    out = sc.classify(
+        sender="PayPal <service@paypal.com>",
+        subject="Apple Services: $19.52 USD",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_keep_in_touch_local_part_is_automated() -> None:
+    out = sc.classify(
+        sender="McKinsey <keep-in-touch@mckinsey.com>",
+        subject="May 2026 Newsletter",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_info_dash_prefix_is_automated() -> None:
+    """info-courtyards@... has info- prefix → automated."""
+    out = sc.classify(
+        sender="info-courtyards@sterlinghousing.com",
+        subject="COURTYARDS: Bike Sweep",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_underscore_noreply_is_automated() -> None:
+    """no_reply (underscore) normalizes to no-reply → automated."""
+    out = sc.classify(
+        sender="Chase <no_reply@mcmap.chase.com>",
+        subject="Earn up to $500 by referring friends",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_campusespmail_domain_is_automated() -> None:
+    out = sc.classify(
+        sender="Babson College <families@babson.campusespmail.com>",
+        subject="Family Portal Newsletter",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_ebay_brand_local_part_is_automated() -> None:
+    out = sc.classify(
+        sender="eBay <ebay@ebay.com>",
+        subject="Offer expired",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_ebay_reply_subdomain_is_automated() -> None:
+    out = sc.classify(
+        sender="eBay <ebay@reply.ebay.com>",
+        subject="Get your cash fast with express payouts",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_totalenergies_french_service_client_is_automated() -> None:
+    """service.client@mails.totalenergies.fr — mails. subdomain catches it."""
+    out = sc.classify(
+        sender="TotalEnergies <service.client@mails.totalenergies.fr>",
+        subject="un déménagement en approche?",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
 # --- user overrides ---
 
 
