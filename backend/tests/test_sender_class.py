@@ -659,6 +659,115 @@ def test_totalenergies_french_service_client_is_automated() -> None:
     assert out.cls == "automated"
 
 
+# --- v5 fixtures: remaining leaks after v4 audit ---
+
+
+def test_numbered_letter_subdomain_is_automated() -> None:
+    """e1.victoriassecret.com — numbered ESP throwaway subdomain."""
+    out = sc.classify(
+        sender="VS Rewards <VSandPINKRewards@e1.victoriassecret.com>",
+        subject="NEW Wink Styles",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_brand_local_part_on_brand_domain_is_automated() -> None:
+    """colehaan@sp.colehaan.com — brand name appears in domain → automated."""
+    out = sc.classify(
+        sender="COLE HAAN <colehaan@sp.colehaan.com>",
+        subject="Sale: up to 50% off",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_ealerts_subdomain_is_automated() -> None:
+    out = sc.classify(
+        sender="Bank of America <onlinebanking@ealerts.bankofamerica.com>",
+        subject="Zelle payment of $700 sent",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_e_mail_dashed_subdomain_is_automated() -> None:
+    """e-mail.amtrak.com — hyphenated mailer subdomain."""
+    out = sc.classify(
+        sender="Amtrak <amtrak@e-mail.amtrak.com>",
+        subject="Don't miss your mystery bonus",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_communication_local_part_is_automated() -> None:
+    out = sc.classify(
+        sender="CS Alumni <communication@centralesupelec-alumni.com>",
+        subject="People of CentraleSupélec",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_newsletter_in_subject_anywhere_is_automated() -> None:
+    out = sc.classify(
+        sender="Hugo <hugo.cagnon@student-cs.fr>",
+        subject="[Promo2027] [Infos] [BDE] Newsletter du 24 Mai",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_txn_email_subdomain_is_automated() -> None:
+    out = sc.classify(
+        sender="PlayStation <sony@txn-email03.playstation.com>",
+        subject="Merci pour votre achat",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_emails_local_part_is_automated() -> None:
+    out = sc.classify(
+        sender="Sarah Butcher <emails@efinancialcareers.com>",
+        subject="Today's top news",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_hello_subdomain_is_automated() -> None:
+    out = sc.classify(
+        sender="CSC <cscpaymobile@hello.cscsw.com>",
+        subject="A Gift from CSC",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "automated"
+
+
+def test_real_human_at_corporate_domain_not_misfired_by_brand_rule() -> None:
+    """Sanity: a real person whose name happens to match a token in the
+    domain (e.g., 'mary@buyer.co' — mary is NOT in buyer.co tokens) doesn't
+    misfire on the brand-name rule."""
+    out = sc.classify(
+        sender="Mary Smith <mary@buyer.co>",
+        subject="Quick Q on the spec",
+        snippet="...",
+        headers={},
+    )
+    assert out.cls == "person"
+
+
 # --- user overrides ---
 
 

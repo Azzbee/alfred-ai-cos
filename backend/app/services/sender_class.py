@@ -177,6 +177,12 @@ _AUTOMATED_LOCAL_PARTS = {
     "ebay",  # brand-name local part on its own domain is always automated
     "service-client",
     "service.client",
+    "communication",  # communication@centralesupelec-alumni.com
+    "communications",
+    "emails",  # emails@efinancialcareers.com
+    "onlinebanking",
+    "rewards",
+    "premium",  # premium@academia-mail.com
 }
 
 # Local parts that have a digit suffix typical of mail-blast platforms:
@@ -238,6 +244,8 @@ _AUTOMATED_LOCAL_SUFFIXES = (
 _BULK_DOMAIN_PATTERNS = (
     "mailchimp",
     "mailchimpapp",
+    "academia-mail",
+    "proxydocs.com",  # Webull / brokerage corporate-action mailer
     "facebookmail.com",  # Facebook's mailer; legitimate per brand-domain list
     "instagrammail.com",
     "medallia.com",  # feedback / survey blasts
@@ -336,6 +344,21 @@ _TRANSACTIONAL_SUBDOMAINS = (
     # Two-letter brand-mailing prefixes
     "hi.",
     "go.",
+    "sp.",  # sp.colehaan.com
+    "hello.",  # hello.cscsw.com
+    "txn.",  # txn-prefixed transactional mailers
+    "txn-",  # catches txn-email03.playstation.com, txn-abc.brand.io
+    "txn-email.",
+    "tr-",  # tr-1.brand.io, tr-mail.brand.io
+    "ealerts.",  # ealerts.bankofamerica.com
+    "e-mail.",  # e-mail.amtrak.com (dashed)
+    "e-news.",
+    "broadcast.",
+    "communication.",
+    "communications.",
+    "comms.",
+    "rewards.",
+    "newsroom.",
     # Word prefixes
     "email.",
     "emails.",
@@ -618,11 +641,14 @@ _NEWSLETTER_SUBJECT_RE = re.compile(
     #   [Anything Newsletter] Whatever
     #   [Anything Digest] Whatever
     #   [Brand] Digest — June 4
+    #   [Promo2027] [Infos] Newsletter du 24 Mai
     #   Your weekly digest from X
     #   The Daily Brief
     #   Issue #42 of the Brand
+    #   Newsletter: anything
     r"(^\s*\[[^\]]*\]\s+(digest|newsletter|brief|recap|round[- ]?up)\b|"
     r"\[[^\]]*(newsletter|digest)\]|"
+    r"\bnewsletter (du|de|of|from|for|#)|"
     r"your (weekly|daily|monthly|biweekly) (digest|update|recap|brief)|"
     r"this week (in|at)|weekly (round-?up|brief)|"
     r"the (daily|weekly|morning|evening) (brief|digest)|"
@@ -782,6 +808,21 @@ def classify(
     if dom and any(dom.startswith(prefix) for prefix in _TRANSACTIONAL_SUBDOMAINS):
         reasons.append(f"sent from transactional / marketing subdomain ({dom})")
         return Classification(cls="automated", reasons=reasons)
+    # Numbered-letter subdomains like e1.victoriassecret.com, m1.brand.com,
+    # n2.something.io. Catch with a regex: single letter + 1-3 digits + dot.
+    if dom and re.match(r"^[a-z]\d{1,3}\.", dom):
+        reasons.append(f"numbered ESP subdomain ({dom})")
+        return Classification(cls="automated", reasons=reasons)
+
+    # Brand-name local part on the brand's own (or sister) domain.
+    # `colehaan@sp.colehaan.com`, `cscpaymobile@hello.cscsw.com`,
+    # `webull@proxydocs.com`. Real humans don't email From: <brand>@<brand>.com.
+    # Heuristic: local part >= 4 chars AND appears as a token in the domain.
+    if local and len(local) >= 4 and dom:
+        dom_tokens = set(dom.replace(".", " ").split())
+        if local in dom_tokens:
+            reasons.append(f"brand-name local part '{local}' appears in domain {dom}")
+            return Classification(cls="automated", reasons=reasons)
 
     # 7a) Auto-reply / out-of-office → automated. A real human's name might
     # appear in the From, but the message IS automated by definition.
