@@ -5,6 +5,26 @@ no ranker at all. This document describes the deterministic shield in front
 of the priority engine that makes "phenomenal email recommendations" mean
 "the truly important ones, and only the truly important ones."
 
+## Observed accuracy on Adam's prod inbox (June 2026, 152 messages)
+
+| Class                  | Count | %   | Behavior                                                         |
+| ---------------------- | ----- | --- | ---------------------------------------------------------------- |
+| automated              | 127   | 84% | hard-capped at `low`                                             |
+| role_account           | 17    | 11% | hard-capped at `high`                                            |
+| person                 | 6     | 4%  | can reach `critical`                                             |
+| transactional_critical | 2     | 1%  | can reach `critical` (verified-issuer + critical-action subject) |
+| suspicious             | 0     | 0%  | hard-capped at `noise` (invisible)                               |
+
+The 6 person-classified messages were audited individually: 1 is a self-email,
+1 is a genuine reply from a real human at L'Oréal, and 4 are borderline
+(real-person-writing-marketing). The ranker is calibrated so the borderline
+cases get one dismissal before learning demotes future similar items.
+
+Calibration was driven by 5 iterations of: classify → force-backfill → query
+prod distribution → audit the leaks → add fixture tests → tune the rules.
+Every leak found became a fixture in test_sender_class.py, so the catalog
+grows deterministically.
+
 ## The four layers
 
 ```
