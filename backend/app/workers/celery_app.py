@@ -37,5 +37,12 @@ celery_app.conf.update(
             "task": "albert.scan_notifications",
             "schedule": crontab(minute="*/30"),
         },
+        # Fire any due RecurringRule. 5-minute granularity is the finest the
+        # PRD asks for (weekly_digest, project_propose); a tighter beat would
+        # just chew through DB queries.
+        "recurring-scan": {
+            "task": "albert.scan_recurring",
+            "schedule": crontab(minute="*/5"),
+        },
     },
 )

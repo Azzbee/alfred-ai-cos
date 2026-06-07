@@ -24,6 +24,7 @@ from app.db.models import (
     Notification,
     Person,
     Project,
+    RecurringRule,
     SpendLimit,
     Task,
     User,
@@ -54,6 +55,7 @@ _USER_SCOPED = (
     Message,
     Person,
     Project,
+    RecurringRule,
     ConnectedAccount,
 )
 

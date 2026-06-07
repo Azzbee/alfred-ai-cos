@@ -128,3 +128,17 @@ def scan_notifications() -> dict[str, int]:
     finally:
         db.close()
     return {"enqueued": enqueued, "sent": sent, "held": held}
+
+
+@celery_app.task(name="albert.scan_recurring")  # type: ignore[untyped-decorator]
+def scan_recurring() -> dict[str, int]:
+    """Beat entry point (every 5 min): fire any RecurringRule whose
+    next_run_at has passed."""
+    from app.services import recurring as recurring_service
+
+    db = SessionLocal()
+    try:
+        fired = recurring_service.scan_and_fire(db)
+    finally:
+        db.close()
+    return {"fired": fired}

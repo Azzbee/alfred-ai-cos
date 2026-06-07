@@ -19,6 +19,7 @@ from app.api.v1 import (
     people,
     plan,
     projects,
+    recurring,
     search,
     senders,
     sync,
@@ -49,4 +50,5 @@ api_router.include_router(senders.router)
 api_router.include_router(people.router)
 api_router.include_router(projects.router)
 api_router.include_router(plan.router)
+api_router.include_router(recurring.router)
 api_router.include_router(dev.router)
