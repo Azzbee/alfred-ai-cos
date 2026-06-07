@@ -62,7 +62,9 @@ class SnoozeOut(BaseModel):
 # --- Drafts ---
 class DraftCreateRequest(BaseModel):
     message_id: str
-    tone: str = "concise"
+    # Optional — falls back to the Memory Agent's learned per-recipient tone,
+    # which itself defaults to "concise" when there's no signal yet.
+    tone: str | None = None
     instruction: str | None = None
 
 
@@ -122,7 +124,8 @@ class AssistantAskResponse(BaseModel):
 
 
 class CommitmentDraftRequest(BaseModel):
-    tone: str = "concise"
+    # Optional — falls back to the Memory Agent's learned per-recipient tone.
+    tone: str | None = None
     instruction: str | None = None
 
 

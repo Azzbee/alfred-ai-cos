@@ -20,6 +20,7 @@ user (no global people table) and their email is canonicalised on write."""
 from datetime import datetime
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     DateTime,
     Float,
@@ -72,3 +73,10 @@ class Person(Base):
 
     # Free-text notes the user attaches via the People screen.
     notes: Mapped[str | None] = mapped_column(Text)
+
+    # PRD agent 7 (Memory): per-person tone preferences learned from drafts
+    # the user has actually sent. Stored as a {tone: count} dict; the
+    # Memory Agent picks the highest-count tone for the next draft to this
+    # person. Defaults to empty; the existing `concise` default still applies
+    # until enough signal is accumulated.
+    learned_tone: Mapped[dict | None] = mapped_column(JSON)

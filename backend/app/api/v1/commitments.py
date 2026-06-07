@@ -84,10 +84,20 @@ def draft_for_commitment(
         context_parts.append(f"Source (verbatim): {commitment.evidence}")
     context = "\n".join(context_parts)
 
+    # Memory Agent: tone defaults to the learned per-recipient preference
+    # when the client didn't override it. We extract the bare email from
+    # `commitment.counterparty` (it may carry a "Name <email>" form).
+    from app.services import memory
+
+    recipient_email: str | None = None
+    if commitment.counterparty and "@" in commitment.counterparty:
+        recipient_email = commitment.counterparty.split("<")[-1].rstrip(">").strip()
+    chosen_tone = payload.tone or memory.preferred_tone(db, user, recipient_email=recipient_email)
+
     result = get_llm().draft_reply(
         thread_context=context,
         instruction=payload.instruction,
-        tone=payload.tone,
+        tone=chosen_tone,
         user_name=user.name,
     )
 
@@ -109,7 +119,7 @@ def draft_for_commitment(
                 message_id=message.id,
                 subject=subject,
                 body=result.body,
-                tone=payload.tone,
+                tone=chosen_tone,
             )
             db.add(draft)
             db.commit()
@@ -119,7 +129,7 @@ def draft_for_commitment(
         recipient=commitment.counterparty,
         subject=subject,
         body=result.body,
-        tone=payload.tone,
+        tone=chosen_tone,
         evidence=commitment.evidence,
         draft_reply_id=draft_reply_id,
     )

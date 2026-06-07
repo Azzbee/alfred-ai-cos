@@ -49,6 +49,14 @@ def ensure_draft_for(db: Session, user: User, *, commitment: Commitment) -> str 
     if existing is not None:
         return existing.id
 
+    # Memory Agent: pick the tone the user usually sends to this recipient.
+    # Falls back to "concise" when there's no signal yet.
+    from app.services import memory
+
+    chosen_tone = memory.preferred_tone(
+        db, user, recipient_email=(message.sender or "").split("<")[-1].rstrip(">")
+    )
+
     try:
         # Same context shape the manual /commitments/{id}/draft endpoint uses.
         context = (
@@ -59,7 +67,7 @@ def ensure_draft_for(db: Session, user: User, *, commitment: Commitment) -> str 
         result = get_llm().draft_reply(
             thread_context=context,
             instruction=None,
-            tone="concise",
+            tone=chosen_tone,
             user_name=user.name,
         )
     except Exception:
@@ -72,7 +80,7 @@ def ensure_draft_for(db: Session, user: User, *, commitment: Commitment) -> str 
         message_id=message.id,
         subject=subject,
         body=result.body,
-        tone="concise",
+        tone=chosen_tone,
     )
     db.add(draft)
     db.commit()

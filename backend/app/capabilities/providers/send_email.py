@@ -20,8 +20,16 @@ from app.capabilities.base import (
 )
 from app.db.enums import ActionType, Provider, RiskLevel
 from app.db.models import ConnectedAccount, DraftReply, Message, User
-from app.services import gmail, outbound_tracking
+from app.services import gmail, memory, outbound_tracking
 from app.services.crypto import decrypt_token
+
+
+def _record_tone_for_recipient(db, user, message, draft) -> None:
+    """Bump the Memory Agent's tone count for the recipient of this send.
+    Local helper so the import of `memory` stays load-bearing — the
+    formatter prunes unused imports otherwise."""
+    if draft.tone and message.sender:
+        memory.record_tone(db, user, recipient_email=message.sender, tone=draft.tone)
 
 
 class SendEmailCapability:
@@ -62,6 +70,7 @@ class SendEmailCapability:
                 recipient=message.sender,
                 subject=draft.subject,
             )
+            _record_tone_for_recipient(db, user, message, draft)
             return ExecutionResult(detail="Email sent (dev seed)", reversible=False)
 
         token = decrypt_token(account.token_ciphertext)
@@ -84,6 +93,7 @@ class SendEmailCapability:
             recipient=message.sender,
             subject=subject,
         )
+        _record_tone_for_recipient(db, user, message, draft)
         # Sending is not reversible (it left the user's mailbox).
         return ExecutionResult(
             detail=f"Sent to {message.sender}",
