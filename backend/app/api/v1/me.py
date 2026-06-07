@@ -22,6 +22,8 @@ from app.db.models import (
     ExecutionLog,
     Message,
     Notification,
+    Person,
+    Project,
     SpendLimit,
     Task,
     User,
@@ -50,6 +52,8 @@ _USER_SCOPED = (
     Commitment,
     CalendarEvent,
     Message,
+    Person,
+    Project,
     ConnectedAccount,
 )
 

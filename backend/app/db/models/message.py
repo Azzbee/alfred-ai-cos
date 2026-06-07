@@ -45,3 +45,11 @@ class Message(Base):
     # Stored so per-commitment scoring is O(1) and the dashboard renders the
     # same answer the ranker uses.
     sender_classification: Mapped[str | None] = mapped_column(String(32))
+
+    # PRD 15.1 link back to the Person memory entity. Set by the people
+    # service when ingestion runs, so the People screen and the Memory Agent
+    # can reach every message a given person ever sent without re-parsing
+    # the `sender` header.
+    sender_person_id: Mapped[str | None] = mapped_column(
+        ForeignKey("people.id", ondelete="SET NULL"), index=True
+    )

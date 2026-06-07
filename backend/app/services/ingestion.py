@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.db.enums import Provider, SyncStatus
 from app.db.models import ConnectedAccount, Message, User
-from app.services import gmail, sender_class
+from app.services import gmail, people, sender_class
 from app.services.crypto import decrypt_token
 
 
@@ -75,6 +75,11 @@ def ingest_recent_messages(db: Session, user_id: str, *, max_results: int = 25) 
             )
             message.sender_classification = cls.cls
             db.add(message)
+            db.flush()  # populate message.id before people.upsert_from_message links it
+            # Resolve sender + recipients to Person rows so the People screen
+            # and the Memory Agent can find them without re-parsing headers.
+            if user is not None:
+                people.upsert_from_message(db, user, message)
             new_messages.append(message)
         account.sync_status = SyncStatus.ok
         account.last_synced_at = datetime.now(UTC)

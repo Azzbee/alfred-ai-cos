@@ -47,3 +47,14 @@ class Commitment(Base):
     #     the source thread (cheap: we already index thread_id on Message).
     snooze_until: Mapped[date | None] = mapped_column(Date)
     snooze_until_reply: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # PRD 15.1 links to the memory entities. counterparty_person_id is filled
+    # by the people service when the counterparty string parses to an email
+    # that matches a Person row; project_id is filled by the project service
+    # when the commitment clusters into a known project (Barnes deal, etc.).
+    counterparty_person_id: Mapped[str | None] = mapped_column(
+        ForeignKey("people.id", ondelete="SET NULL"), index=True
+    )
+    project_id: Mapped[str | None] = mapped_column(
+        ForeignKey("projects.id", ondelete="SET NULL"), index=True
+    )

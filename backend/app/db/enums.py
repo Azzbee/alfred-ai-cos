@@ -53,6 +53,29 @@ class TaskStatus(enum.StrEnum):
     snoozed = "snoozed"
 
 
+class RelationshipType(enum.StrEnum):
+    """Who this person is to the user (PRD 15.1 Person.relationship_type).
+    Mostly advisory; the ranker reads `importance_weight`, not this string."""
+
+    unknown = "unknown"
+    self_ = "self"  # the user themselves
+    colleague = "colleague"  # same email domain as the user
+    client = "client"  # high outbound traffic at a non-personal domain
+    vendor = "vendor"  # role accounts at vendor domains
+    investor = "investor"
+    family = "family"  # user-overridable
+    friend = "friend"  # user-overridable
+    automated = "automated"  # bulk / role / no-reply senders
+    suspicious = "suspicious"  # phishing / impersonation
+
+
+class ProjectStatus(enum.StrEnum):
+    active = "active"
+    on_hold = "on_hold"
+    done = "done"
+    archived = "archived"
+
+
 class SourceType(enum.StrEnum):
     gmail = "gmail"
     calendar = "calendar"

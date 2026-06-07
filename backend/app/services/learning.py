@@ -135,6 +135,19 @@ def record_event(
     learning["by_category"] = by_cat
     prefs["learning"] = learning
     user.preferences = prefs
+
+    # Also bump the Person's importance_weight so the People screen reflects
+    # the learning loop in real time. Bounded ±1 inside adjust_importance.
+    if commitment is not None and commitment.counterparty_person_id:
+        from app.db.models import Person
+        from app.services import people as people_service
+
+        person = db.get(Person, commitment.counterparty_person_id)
+        if person is not None:
+            # Smaller delta on Person.importance_weight than on the dict — the
+            # dict is bounded ±15 while importance_weight is ±1, so we scale
+            # 1/10 to keep the trajectories proportional.
+            people_service.adjust_importance(person, delta * 0.1)
     db.commit()
 
 

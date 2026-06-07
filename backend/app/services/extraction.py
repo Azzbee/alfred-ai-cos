@@ -162,5 +162,13 @@ def process_message(db: Session, message: Message, *, body: str | None = None) -
         db.add(commitment)
         commitments.append(commitment)
 
+    # Resolve counterparties to Person rows. Done after the dedup loop so we
+    # only pay the lookup for actually-kept commitments.
+    db.flush()
+    from app.services import people
+
+    for c in commitments:
+        people.link_commitment(db, user, c)
+
     db.commit()
     return commitments
