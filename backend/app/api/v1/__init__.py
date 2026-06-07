@@ -17,6 +17,7 @@ from app.api.v1 import (
     messages,
     notifications,
     people,
+    plan,
     projects,
     search,
     senders,
@@ -47,4 +48,5 @@ api_router.include_router(search.router)
 api_router.include_router(senders.router)
 api_router.include_router(people.router)
 api_router.include_router(projects.router)
+api_router.include_router(plan.router)
 api_router.include_router(dev.router)
