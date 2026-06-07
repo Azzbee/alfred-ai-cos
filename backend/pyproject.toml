@@ -23,6 +23,7 @@ dependencies = [
     "anthropic>=0.39",
     "python-multipart>=0.0.12",
     "croniter>=2.0",
+    "stripe>=11.0",
 ]
 
 [dependency-groups]

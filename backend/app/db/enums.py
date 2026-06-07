@@ -5,6 +5,9 @@ import enum
 
 class Provider(enum.StrEnum):
     google = "google"
+    notion = "notion"
+    todoist = "todoist"
+    slack = "slack"
 
 
 class SyncStatus(enum.StrEnum):
@@ -101,6 +104,9 @@ class ActionType(enum.StrEnum):
     send_message = "send_message"  # level 3 (e.g. WhatsApp)
     make_payment = "make_payment"  # level 4 financial
     place_order = "place_order"  # level 4 financial (commerce)
+    create_notion_page = "create_notion_page"  # level 2 reversible write
+    create_todoist_task = "create_todoist_task"  # level 2 reversible write
+    send_slack_message = "send_slack_message"  # level 3 external comm
     browser_action = "browser_action"  # refused; see docs/integrations/REFUSED.md
 
 

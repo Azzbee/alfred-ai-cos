@@ -48,6 +48,12 @@ class Settings(BaseSettings):
     # See docs/integrations/stripe.md for the compliance prerequisites.
     stripe_secret_key: str = ""
     allow_live_payments: bool = False
+    # Webhook secret (whsec_…) for the subscription billing webhook. When
+    # empty, the /billing/webhook endpoint returns 503.
+    stripe_webhook_secret: str = ""
+    # Default Pro tier price id used as a UX shortcut; the checkout endpoint
+    # still accepts an explicit price_id override.
+    stripe_pro_price_id: str = ""
 
     # WhatsApp Business Cloud API (sandbox). Official API only; unofficial automation
     # is refused (gets numbers banned). See docs/integrations/whatsapp.md.
@@ -69,6 +75,11 @@ class Settings(BaseSettings):
         # calendar.events: create/update events on the user's calendar ("book my time").
         # Adding this invalidates existing tokens — users re-consent on next sign-in.
         "https://www.googleapis.com/auth/calendar.events",
+        # drive.readonly + drive.metadata.readonly: read-only context retrieval
+        # for "the doc Marc sent last week". Adding these invalidates existing
+        # tokens — users re-consent on next sign-in.
+        "https://www.googleapis.com/auth/drive.readonly",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
         "openid",
         "email",
         "profile",

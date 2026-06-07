@@ -22,6 +22,7 @@ from app.db.models.outbound_reply import OutboundReply
 from app.db.models.person import Person
 from app.db.models.project import Project
 from app.db.models.recurring_rule import RecurringRule
+from app.db.models.subscription import Subscription
 from app.db.models.task import Task
 from app.db.models.user import User
 
@@ -43,6 +44,7 @@ __all__ = [
     "Project",
     "RecurringRule",
     "SpendLimit",
+    "Subscription",
     "Task",
     "User",
 ]

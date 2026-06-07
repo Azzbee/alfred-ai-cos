@@ -18,7 +18,10 @@ def _registry() -> dict[ActionType, CapabilityProvider]:
     from app.capabilities.providers.create_task import CreateTaskCapability
     from app.capabilities.providers.delivery_order import DeliveryOrderCapability
     from app.capabilities.providers.gmail_draft import GmailDraftCapability
+    from app.capabilities.providers.notion_page import NotionPageCapability
     from app.capabilities.providers.send_email import SendEmailCapability
+    from app.capabilities.providers.slack_message import SlackMessageCapability
+    from app.capabilities.providers.todoist_task import TodoistTaskCapability
     from app.core.config import get_settings
 
     providers: list[CapabilityProvider] = [
@@ -26,6 +29,13 @@ def _registry() -> dict[ActionType, CapabilityProvider]:
         SendEmailCapability(),
         CreateTaskCapability(),
         CalendarEventCapability(),
+        # Phase 2 integrations. The capability is always registered; the
+        # ConnectedAccount lookup inside .execute is what gates them per-user.
+        # When no account is connected, execute raises a clear CapabilityError
+        # and the action falls back to the manual approval queue.
+        NotionPageCapability(),
+        TodoistTaskCapability(),
+        SlackMessageCapability(),
         # Refused capabilities are always registered so the boundary is explicit:
         # they raise a sourced CapabilityError. See docs/integrations/REFUSED.md.
         BrowserActionCapability(),

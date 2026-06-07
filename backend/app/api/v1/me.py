@@ -27,6 +27,7 @@ from app.db.models import (
     Project,
     RecurringRule,
     SpendLimit,
+    Subscription,
     Task,
     User,
 )
@@ -58,6 +59,7 @@ _USER_SCOPED = (
     Person,
     Project,
     RecurringRule,
+    Subscription,
     ConnectedAccount,
 )
 

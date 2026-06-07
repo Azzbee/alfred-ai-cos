@@ -7,12 +7,15 @@ from app.api.v1 import (
     assistant,
     auth,
     auto_approve,
+    billing,
     briefings,
     capture,
     commitments,
     dev,
     drafts,
+    drive,
     inbox,
+    integrations,
     me,
     meetings,
     messages,
@@ -23,6 +26,7 @@ from app.api.v1 import (
     recurring,
     search,
     senders,
+    share,
     sync,
     tasks,
     today,
@@ -53,4 +57,8 @@ api_router.include_router(projects.router)
 api_router.include_router(plan.router)
 api_router.include_router(recurring.router)
 api_router.include_router(auto_approve.router)
+api_router.include_router(integrations.router)
+api_router.include_router(drive.router)
+api_router.include_router(billing.router)
+api_router.include_router(share.router)
 api_router.include_router(dev.router)
