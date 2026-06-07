@@ -6,6 +6,7 @@ from app.api.v1 import (
     actions,
     assistant,
     auth,
+    auto_approve,
     briefings,
     capture,
     commitments,
@@ -51,4 +52,5 @@ api_router.include_router(people.router)
 api_router.include_router(projects.router)
 api_router.include_router(plan.router)
 api_router.include_router(recurring.router)
+api_router.include_router(auto_approve.router)
 api_router.include_router(dev.router)

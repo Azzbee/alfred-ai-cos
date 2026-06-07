@@ -9,6 +9,7 @@ project services and back-referenced by Message + Commitment via person_id /
 project_id columns."""
 
 from app.db.models.action import ActionProposal, ExecutionLog
+from app.db.models.auto_approve import AutoApprovePolicy
 from app.db.models.briefing import DailyBriefing
 from app.db.models.calendar_event import CalendarEvent
 from app.db.models.capability import AuditLog, SpendLimit
@@ -27,6 +28,7 @@ from app.db.models.user import User
 __all__ = [
     "ActionProposal",
     "AuditLog",
+    "AutoApprovePolicy",
     "CalendarEvent",
     "Commitment",
     "ConnectedAccount",

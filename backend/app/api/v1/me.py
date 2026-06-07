@@ -13,6 +13,7 @@ from app.db.enums import Provider
 from app.db.models import (
     ActionProposal,
     AuditLog,
+    AutoApprovePolicy,
     CalendarEvent,
     Commitment,
     ConnectedAccount,
@@ -44,6 +45,7 @@ _USER_SCOPED = (
     AuditLog,
     ExecutionLog,
     ActionProposal,
+    AutoApprovePolicy,
     SpendLimit,
     DraftReply,
     Notification,

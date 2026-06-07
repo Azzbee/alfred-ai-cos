@@ -27,7 +27,16 @@ def propose_action_internal(
 ) -> ActionProposal:
     """Create and persist an ActionProposal for `action_type`. Raises 400 if no
     capability is registered for it. The proposal's approval_required follows the
-    capability's risk level."""
+    capability's risk level.
+
+    Auto-approve: when the proposal requires approval AND a user-defined
+    AutoApprovePolicy matches the proposal, we flip it to approved + execute
+    immediately. The execution result is still audited; the policy's
+    fire_count is bumped so the UI can show how active a rule is."""
+    from datetime import UTC, datetime
+
+    from app.services import auto_approve
+
     provider = get_capability(action_type)
     if provider is None:
         raise HTTPException(status_code=400, detail=f"No capability for {action_type}")
@@ -45,4 +54,22 @@ def propose_action_internal(
     )
     db.add(proposal)
     db.commit()
+
+    # Delegated workflows: when this proposal would normally need approval,
+    # consult the user's auto-approve policies. A match flips the proposal
+    # to approved + executes via the audited spine.
+    if policy.approval_required and not policy.strong_confirmation:
+        matched = auto_approve.find_matching(db, user, proposal)
+        if matched is not None:
+            proposal.status = ActionStatus.approved
+            proposal.approved_at = datetime.now(UTC)
+            db.commit()
+            try:
+                execution.execute_proposal(db, user, proposal)
+                auto_approve.record_fire(db, matched)
+            except execution.ExecutionBlocked:
+                # The execution spine already wrote the audit row and flipped
+                # the proposal to failed. Don't double-count the policy fire.
+                pass
+
     return proposal
