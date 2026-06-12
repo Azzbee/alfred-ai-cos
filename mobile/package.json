@@ -7,9 +7,16 @@
     "start": "expo start",
     "ios": "expo start --ios",
     "android": "expo start --android",
+    "start:web": "bash scripts/start-web.sh",
+    "proxy": "node scripts/dev-api-proxy.mjs",
+    "login": "node ../node_modules/eas-cli/bin/run login",
+    "device:ios": "bash scripts/standalone-ios.sh device",
+    "build:ios": "bash scripts/standalone-ios.sh build",
+    "install:ios": "bash scripts/standalone-ios.sh install",
+    "update:preview": "bash scripts/standalone-ios.sh update",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run && node --test scripts/dev-api-proxy.test.mjs"
   },
   "dependencies": {
     "@albert/shared-types": "workspace:*",
